@@ -2,7 +2,7 @@
 Web routes initialization with dependency injection and logging support
 """
 
-import logging
+from loguru import logger
 from flask import Blueprint
 from config.settings import Config
 from database.connection import DatabaseManager
@@ -11,9 +11,6 @@ from core.plugin_manager import PluginManager
 
 # Import route modules
 from .routes import create_web_blueprint, create_api_blueprint
-
-# Set up logger for this module
-logger = logging.getLogger(__name__)
 
 # Global variables (will be injected by app.py)
 config: Config = None

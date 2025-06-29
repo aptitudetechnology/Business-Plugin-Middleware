@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify, current_app, redirect, url_for
-import logging
+from loguru import logger
 from typing import Any, Dict
 from datetime import datetime # Moved this import to the top as suggested
 
@@ -7,7 +7,6 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
     """Create web interface blueprint with plugin support"""
     
     web = Blueprint('web', __name__)
-    logger = logging.getLogger(__name__)
     
     # --- Jinja2 Filters ---
     @web.app_template_filter('datetime')

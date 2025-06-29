@@ -5,9 +5,20 @@ import os
 import sys
 import importlib
 import importlib.util
-from typing import Dict, List, Optional, Type, Any
+from typing import Dict, List,                # Categorize the plugin
+                self._categorize_plugin(plugin_instance)
+                
+                logger.info(f"Initialized plugin: {plugin_name}")
+                return True
+            else:
+                raise PluginError(f"Plugin {plugin_name} initialization failed")
+                
+        except Exception as e:
+            logger.error(f"Failed to initialize plugin {plugin_name}: {e}")
+            self._failed_plugins.append(plugin_name)
+            return Falseype, Any
 from pathlib import Path
-import logging
+from loguru import logger
 from flask import Flask, Blueprint
 
 from .base_plugin import BasePlugin, WebPlugin, APIPlugin, ProcessingPlugin, IntegrationPlugin
@@ -20,7 +31,6 @@ class PluginManager:
     def __init__(self, plugins_directory: str, config: Any = None):
         self.plugins_directory = Path(plugins_directory)
         self.config = config
-        self.logger = logging.getLogger(__name__)
         
         # Plugin storage
         self._plugins: Dict[str, BasePlugin] = {}
@@ -44,7 +54,7 @@ class PluginManager:
         discovered = []
         
         if not self.plugins_directory.exists():
-            self.logger.warning(f"Plugins directory not found: {self.plugins_directory}")
+            logger.warning(f"Plugins directory not found: {self.plugins_directory}")
             return discovered
         
         for plugin_dir in self.plugins_directory.iterdir():
@@ -52,7 +62,7 @@ class PluginManager:
                 plugin_file = plugin_dir / 'plugin.py'
                 if plugin_file.exists():
                     discovered.append(plugin_dir.name)
-                    self.logger.debug(f"Discovered plugin: {plugin_dir.name}")
+                    logger.debug(f"Discovered plugin: {plugin_dir.name}")
         
         return discovered
     
@@ -97,11 +107,11 @@ class PluginManager:
             
             # Store the plugin class
             self._plugin_classes[plugin_name] = plugin_class
-            self.logger.info(f"Loaded plugin class: {plugin_name}")
+            logger.info(f"Loaded plugin class: {plugin_name}")
             return True
             
         except Exception as e:
-            self.logger.error(f"Failed to load plugin {plugin_name}: {e}")
+            logger.error(f"Failed to load plugin {plugin_name}: {e}")
             self._failed_plugins.append(plugin_name)
             return False
     
@@ -152,7 +162,7 @@ class PluginManager:
                 raise PluginError(f"Plugin initialization failed: {plugin_name}")
                 
         except Exception as e:
-            self.logger.error(f"Failed to initialize plugin {plugin_name}: {e}")
+            logger.error(f"Failed to initialize plugin {plugin_name}: {e}")
             self._failed_plugins.append(plugin_name)
             return False
     
@@ -160,7 +170,7 @@ class PluginManager:
         """Check if plugin dependencies are met"""
         for dep in plugin.dependencies:
             if dep not in self._initialized_plugins:
-                self.logger.error(f"Dependency not met: {dep} for plugin {plugin.name}")
+                logger.error(f"Dependency not met: {dep} for plugin {plugin.name}")
                 return False
         return True
     

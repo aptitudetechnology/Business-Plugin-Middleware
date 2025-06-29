@@ -4,10 +4,10 @@ Provides integration with Paperless-NGX document management system
 """
 
 import requests
-import logging
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 from urllib.parse import urljoin
+from loguru import logger
 
 from core.base_plugin import BasePlugin, ProcessingPlugin
 from core.exceptions import PluginError, PluginConfigurationError
@@ -37,7 +37,8 @@ class PaperlessNGXPlugin(BasePlugin):
         self.verify_ssl = True
         self.session = None
         
-        self.logger = logging.getLogger(f"{__name__}.{self.name}")
+        # Configure Loguru logger with plugin context
+        self.logger = logger.bind(plugin=self.name, version=self.version)
     
     def initialize(self, app_context: Dict[str, Any]) -> bool:
         """Initialize the plugin and test connection"""
@@ -63,10 +64,10 @@ class PaperlessNGXPlugin(BasePlugin):
             
             # Test the connection
             response = self._make_request('GET', '/api/documents/', params={'page_size': 1})
-            self.logger.info(f"Paperless-NGX plugin initialized successfully. API connection tested.")
+            self.logger.success("Paperless-NGX plugin initialized successfully. API connection tested.")
             return True
         except Exception as e:
-            self.logger.error(f"Failed to initialize Paperless-NGX plugin: {str(e)}")
+            self.logger.error("Failed to initialize Paperless-NGX plugin: {error}", error=str(e))
             # Still return True for placeholder configurations to allow startup
             if (self.base_url in ['http://localhost:8000', 'http://your-paperless-ngx-server:8000', 'https://your-paperless-instance.com'] or
                 self.api_key in ['your_api_token_here', 'your-paperless-ngx-token', 'your-paperless-api-key']):
@@ -89,10 +90,12 @@ class PaperlessNGXPlugin(BasePlugin):
             # Configure SSL verification
             self.session.verify = self.verify_ssl
             
-            self.logger.info("Paperless-NGX API client initialized")
+            self.logger.success("Paperless-NGX API client initialized", 
+                              base_url=self.base_url, 
+                              verify_ssl=self.verify_ssl)
             return True
         except Exception as e:
-            self.logger.error(f"Failed to initialize API client: {e}")
+            self.logger.error("Failed to initialize API client: {error}", error=e)
             return False
     
     def cleanup(self) -> bool:
@@ -103,10 +106,9 @@ class PaperlessNGXPlugin(BasePlugin):
             self.logger.info("Paperless-NGX plugin cleanup completed successfully.")
             return True
         except Exception as e:
-            self.logger.error(f"Error during Paperless-NGX plugin cleanup: {str(e)}")
+            self.logger.error("Error during Paperless-NGX plugin cleanup: {error}", error=str(e))
             return False
-    
-    def test_connection(self) -> bool:
+     def test_connection(self) -> bool:
         """Test connection to Paperless-NGX API"""
         try:
             if not self.session or not self.base_url or not self.api_key:
@@ -116,9 +118,9 @@ class PaperlessNGXPlugin(BasePlugin):
             response = self._make_request('GET', '/api/documents/', params={'page_size': 1})
             return response.status_code == 200
         except Exception as e:
-            self.logger.error(f"Connection test failed: {str(e)}")
+            self.logger.error("Connection test failed: {error}", error=str(e))
             return False
-    
+
     def test_connection_with_config(self, test_config=None):
         """Test connection with current or provided configuration"""
         try:
@@ -152,7 +154,7 @@ class PaperlessNGXPlugin(BasePlugin):
             return response.status_code == 200
             
         except Exception as e:
-            self.logger.error(f"Connection test failed: {e}")
+            self.logger.error("Connection test failed: {error}", error=e)
             return False
     
     def get_config_form(self):
@@ -309,11 +311,11 @@ class PaperlessNGXPlugin(BasePlugin):
             if self.config.get('enabled', False) and self.base_url and self.api_key:
                 self._initialize_client()
             
-            self.logger.info(f"Configuration updated for {self.name}")
+            self.logger.success("Configuration updated for {name}", name=self.name)
             return True
             
         except Exception as e:
-            self.logger.error(f"Failed to update configuration: {e}")
+            self.logger.error("Failed to update configuration: {error}", error=e)
             return False
     
     def _make_request(self, method: str, endpoint: str, **kwargs) -> requests.Response:
@@ -326,7 +328,8 @@ class PaperlessNGXPlugin(BasePlugin):
             response.raise_for_status()
             return response
         except requests.exceptions.RequestException as e:
-            self.logger.error(f"API request failed: {method} {url} - {str(e)}")
+            self.logger.error("API request failed: {method} {url} - {error}", 
+                            method=method, url=url, error=str(e))
             raise PluginError(f"Paperless-NGX API request failed: {str(e)}")
     
     def get_documents(self, page: int = 1, page_size: int = 25, search: str = None) -> Dict[str, Any]:
@@ -360,7 +363,7 @@ class PaperlessNGXPlugin(BasePlugin):
                 'total_pages': (data.get('count', 0) + page_size - 1) // page_size
             }
         except Exception as e:
-            self.logger.error(f"Failed to fetch documents: {str(e)}")
+            self.logger.error("Failed to fetch documents: {error}", error=str(e))
             raise PluginError(f"Failed to fetch documents from Paperless-NGX: {str(e)}")
     
     def get_document(self, doc_id: int) -> Dict[str, Any]:
