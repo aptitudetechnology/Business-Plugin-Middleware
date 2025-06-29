@@ -40,9 +40,23 @@ echo "📦 Upgrading pip..."
 pip install --upgrade pip
 
 # Install development dependencies
-echo "📦 Installing development dependencies..."
-pip install -r requirements.txt
-pip install -r requirements-dev.txt
+echo "📦 Installing core dependencies..."
+echo "Installing from requirements.txt..."
+if pip install -r requirements.txt; then
+    echo "✅ Core dependencies installed successfully"
+else
+    echo "❌ Failed to install core dependencies"
+    echo "Trying to install Flask manually..."
+    pip install Flask==2.3.3
+fi
+
+# Install dev dependencies if file exists
+if [ -f "requirements-dev.txt" ]; then
+    echo "📦 Installing development dependencies..."
+    pip install -r requirements-dev.txt
+else
+    echo "ℹ️  No requirements-dev.txt found, skipping dev dependencies"
+fi
 
 # Create necessary directories
 echo "📁 Creating directories..."
@@ -74,6 +88,21 @@ if command_exists tesseract; then
     echo "✅ Tesseract found: $(tesseract --version | head -n1)"
 else
     echo "⚠️  Tesseract not found (optional for OCR functionality)"
+fi
+
+# Verify Flask installation
+echo "🔍 Verifying Flask installation..."
+if python3 -c "import flask; print(f'✅ Flask {flask.__version__} installed successfully')" 2>/dev/null; then
+    echo "Flask verification passed"
+else
+    echo "❌ Flask not found, attempting to install..."
+    pip install Flask==2.3.3
+    if python3 -c "import flask; print(f'✅ Flask {flask.__version__} installed successfully')" 2>/dev/null; then
+        echo "Flask installation successful"
+    else
+        echo "❌ Flask installation failed"
+        exit 1
+    fi
 fi
 
 # Initialize database

@@ -1,0 +1,12 @@
+{
+  "language": "python3",
+  "run": "python3 quick_start.py",
+  "entrypoint": "quick_start.py",
+  "hidden": [".venv", ".git"],
+  "modules": ["flask", "requests"],
+  "env": {
+    "PYTHONPATH": ".",
+    "FLASK_ENV": "development",
+    "FLASK_DEBUG": "1"
+  }
+}

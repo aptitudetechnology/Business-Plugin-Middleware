@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🚀 Starting Paperless-BigCapital Middleware..."
+echo "🚀 Starting Business Plugin Middleware..."
 
 # Create necessary directories
 echo "📁 Creating necessary directories..."
@@ -16,8 +16,22 @@ fi
 echo "🐍 Activating virtual environment..."
 source venv/bin/activate
 
-# Upgrade pip
-echo "📦 Upgrading pip..."
+# Verify Flask installation first
+echo "🔍 Verifying Flask installation..."
+if python3 -c "import flask; print(f'✅ Flask {flask.__version__} is available')" 2>/dev/null; then
+    echo "Flask verification passed"
+else
+    echo "❌ Flask not found. Installing essential packages..."
+    pip install --upgrade pip
+    pip install Flask==2.3.3 Werkzeug==2.3.7 Jinja2==3.1.2
+    
+    if python3 -c "import flask; print(f'✅ Flask {flask.__version__} installed')" 2>/dev/null; then
+        echo "Flask installation successful"
+    else
+        echo "❌ Flask installation failed"
+        exit 1
+    fi
+fi
 pip install --upgrade pip
 
 # Install/update dependencies
