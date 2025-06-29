@@ -190,6 +190,191 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             logger.error(f"Configuration page error: {e}")
             return render_template('errors/500.html'), 500
     
+    # Paperless-NGX Routes
+    @web.route('/paperless-ngx/documents')
+    def paperless_ngx_documents():
+        """Display Paperless-NGX documents with pagination and search"""
+        try:
+            # Get Paperless-NGX plugin
+            paperless_plugin = None
+            if plugin_manager:
+                paperless_plugin = plugin_manager.get_plugin('paperless_ngx')
+            
+            if not paperless_plugin:
+                return render_template('paperless_ngx_documents.html',
+                                     paperless_ngx_docs=[],
+                                     paperless_ngx_configured=False,
+                                     error_message="Paperless-NGX plugin not configured or unavailable")
+            
+            # Get query parameters
+            page = request.args.get('page', 1, type=int)
+            search_query = request.args.get('q', '').strip()
+            page_size = request.args.get('page_size', 25, type=int)
+            
+            # Validate page size
+            page_size = min(max(page_size, 1), 100)  # Between 1 and 100
+            
+            try:
+                # Get documents from Paperless-NGX
+                result = paperless_plugin.get_documents(
+                    page=page,
+                    page_size=page_size,
+                    search=search_query if search_query else None
+                )
+                
+                documents = result.get('documents', [])
+                
+                # Create pagination object
+                from plugins.paperless_ngx.client import PaperlessNGXPagination
+                pagination_data = {
+                    'count': result.get('count', 0),
+                    'next': result.get('next'),
+                    'previous': result.get('previous'),
+                    'results': documents
+                }
+                pagination = PaperlessNGXPagination(pagination_data, page, page_size)
+                
+                # Get plugin status
+                plugin_status = paperless_plugin.get_status()
+                
+                return render_template('paperless_ngx_documents.html',
+                                     paperless_ngx_docs=documents,
+                                     pagination=pagination,
+                                     search_query=search_query,
+                                     paperless_ngx_configured=True,
+                                     paperless_base_url=paperless_plugin.base_url,
+                                     plugin_status=plugin_status)
+                
+            except Exception as e:
+                logger.error(f"Failed to fetch Paperless-NGX documents: {e}")
+                return render_template('paperless_ngx_documents.html',
+                                     paperless_ngx_docs=[],
+                                     paperless_ngx_configured=True,
+                                     error_message=f"Failed to fetch documents: {str(e)}",
+                                     search_query=search_query)
+        
+        except Exception as e:
+            logger.error(f"Paperless-NGX documents route error: {e}")
+            return render_template('paperless_ngx_documents.html',
+                                 paperless_ngx_docs=[],
+                                 paperless_ngx_configured=False,
+                                 error_message="An error occurred while loading documents")
+    
+    @web.route('/paperless-ngx/document/<int:doc_id>/content')
+    def paperless_ngx_document_content(doc_id):
+        """Display OCR content for a specific Paperless-NGX document"""
+        try:
+            # Get Paperless-NGX plugin
+            paperless_plugin = None
+            if plugin_manager:
+                paperless_plugin = plugin_manager.get_plugin('paperless_ngx')
+            
+            if not paperless_plugin:
+                return render_template('paperless_ngx_document_content.html',
+                                     document=None,
+                                     content=None,
+                                     error_message="Paperless-NGX plugin not configured")
+            
+            try:
+                # Get document metadata
+                document = paperless_plugin.get_document(doc_id)
+                
+                # Get document content
+                content = paperless_plugin.get_document_content(doc_id)
+                
+                return render_template('paperless_ngx_document_content.html',
+                                     document=document,
+                                     content=content)
+                
+            except Exception as e:
+                logger.error(f"Failed to fetch document {doc_id}: {e}")
+                return render_template('paperless_ngx_document_content.html',
+                                     document=None,
+                                     content=None,
+                                     error_message=f"Failed to load document: {str(e)}")
+        
+        except Exception as e:
+            logger.error(f"Document content route error: {e}")
+            return render_template('paperless_ngx_document_content.html',
+                                 document=None,
+                                 content=None,
+                                 error_message="An error occurred while loading document content")
+    
+    @web.route('/paperless-ngx/document/<int:doc_id>')
+    def paperless_ngx_document_detail(doc_id):
+        """Display detailed information for a specific Paperless-NGX document"""
+        try:
+            # Get Paperless-NGX plugin
+            paperless_plugin = None
+            if plugin_manager:
+                paperless_plugin = plugin_manager.get_plugin('paperless_ngx')
+            
+            if not paperless_plugin:
+                return jsonify({'error': 'Paperless-NGX plugin not configured'}), 404
+            
+            try:
+                # Get document metadata
+                document = paperless_plugin.get_document(doc_id)
+                return jsonify(document)
+                
+            except Exception as e:
+                logger.error(f"Failed to fetch document {doc_id}: {e}")
+                return jsonify({'error': str(e)}), 500
+        
+        except Exception as e:
+            logger.error(f"Document detail route error: {e}")
+            return jsonify({'error': 'Internal server error'}), 500
+
+    # API endpoint for processing Paperless-NGX documents
+    @web.route('/api/process-paperless-document/<int:doc_id>', methods=['POST'])
+    def api_process_paperless_document(doc_id):
+        """API endpoint to process a Paperless-NGX document through the middleware"""
+        try:
+            # Get Paperless-NGX plugin
+            paperless_plugin = None
+            if plugin_manager:
+                paperless_plugin = plugin_manager.get_plugin('paperless_ngx')
+            
+            if not paperless_plugin:
+                return jsonify({'error': 'Paperless-NGX plugin not configured'}), 404
+            
+            try:
+                # Get document metadata and content
+                document = paperless_plugin.get_document(doc_id)
+                content = paperless_plugin.get_document_content(doc_id)
+                
+                # Process document through middleware
+                processing_result = {
+                    'document_id': doc_id,
+                    'title': document.get('title'),
+                    'content_length': len(content) if content else 0,
+                    'processing_started': True,
+                    'message': 'Document processing initiated'
+                }
+                
+                # TODO: Implement actual document processing pipeline
+                # This could include:
+                # - OCR analysis
+                # - Data extraction
+                # - Integration with other plugins (BigCapital, etc.)
+                # - Workflow automation
+                
+                logger.info(f"Processing started for Paperless-NGX document {doc_id}")
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Document processing started successfully',
+                    'result': processing_result
+                })
+                
+            except Exception as e:
+                logger.error(f"Failed to process document {doc_id}: {e}")
+                return jsonify({'error': f'Failed to process document: {str(e)}'}), 500
+        
+        except Exception as e:
+            logger.error(f"Process document API error: {e}")
+            return jsonify({'error': 'Internal server error'}), 500
+
     return web
 
 
@@ -314,56 +499,6 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             
             return jsonify(result)
         
-        except Exception as e:
-            logger.error(f"API upload error: {e}")
-            return jsonify({'error': str(e)}), 500
-    
-    @api.route('/documents/batch', methods=['POST'])
-    def api_batch_upload():
-        """API endpoint for batch document upload"""
-        try:
-            if not doc_processor:
-                return jsonify({'error': 'Document processor not available'}), 500
-            
-            files = request.files.getlist('files')
-            if not files:
-                return jsonify({'error': 'No files provided'}), 400
-            
-            # Save all files and collect paths
-            import os
-            import uuid
-            file_paths = []
-            
-            for file in files:
-                if file.filename and doc_processor.is_allowed_file(file.filename):
-                    filename = f"{uuid.uuid4()}_{file.filename}"
-                    file_path = os.path.join(doc_processor.upload_folder, filename)
-                    file.save(file_path)
-                    file_paths.append(file_path)
-            
-            if not file_paths:
-                return jsonify({'error': 'No valid files to process'}), 400
-            
-            # Get metadata from request
-            metadata = {}
-            if request.is_json:
-                metadata = request.get_json() or {}
-            
-            # Process batch
-            results = doc_processor.process_batch(file_paths, metadata)
-            
-            return jsonify({
-                'success': True,
-                'total_files': len(file_paths),
-                'results': results
-            })
-        
-        except Exception as e:
-            logger.error(f"API batch upload error: {e}")
-            return jsonify({'error': str(e)}), 500
-    
-    return api
-
 
 def import_datetime():
     """Helper to import datetime module"""

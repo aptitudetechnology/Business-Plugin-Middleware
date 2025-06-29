@@ -63,9 +63,18 @@ enabled = False
 
 [paperless_ngx]
 # Paperless-ngx plugin configuration
+# Your Paperless-NGX API token (get from Settings > API Tokens)
 api_key = your-paperless-api-key
+# Base URL of your Paperless-NGX instance (without trailing slash)
 base_url = https://your-paperless-instance.com
-enabled = False
+# Enable the plugin
+enabled = true
+# Request timeout in seconds
+timeout = 30
+# Auto-refresh documents in UI
+auto_refresh = true
+# Default page size for document listing
+page_size = 25
 
 [security]
 # Security settings

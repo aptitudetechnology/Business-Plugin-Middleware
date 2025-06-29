@@ -20,8 +20,11 @@
     "base_url": "https://your-invoice-ninja-instance.com"
   },
   "paperless_ngx": {
-    "enabled": false,
+    "enabled": true,
     "api_key": "your-paperless-api-key",
-    "base_url": "https://your-paperless-instance.com"
+    "base_url": "https://your-paperless-instance.com",
+    "timeout": 30,
+    "auto_refresh": true,
+    "page_size": 25
   }
 }
