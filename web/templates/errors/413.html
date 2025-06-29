@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block title %}File Too Large{% endblock %}
+{% block content %}
+<div class="text-center">
+    <h1 class="display-1 fw-bold text-warning">413</h1>
+    <p class="fs-3"><span class="text-warning">Oops!</span> File too large.</p>
+    <p class="lead">The file you're trying to upload exceeds the maximum allowed size.</p>
+    
+    <div class="alert alert-warning mt-4">
+        <h5><i class="fas fa-info-circle"></i> Upload Limits</h5>
+        <p class="mb-0">
+            Maximum file size: <strong>{{ (config.MAX_CONTENT_LENGTH / 1024 / 1024) | round(1) if config.MAX_CONTENT_LENGTH else '10' }} MB</strong>
+        </p>
+    </div>
+    
+    <div class="mt-4">
+        <a href="{{ url_for('web.upload_document') }}" class="btn btn-primary me-2">
+            <i class="fas fa-upload"></i> Try Upload Again
+        </a>
+        <a href="{{ url_for('web.dashboard') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-home"></i> Back to Dashboard
+        </a>
+    </div>
+    
+    <div class="mt-4">
+        <small class="text-muted">
+            <i class="fas fa-lightbulb"></i> 
+            Tip: Try compressing your file or splitting large documents into smaller parts.
+        </small>
+    </div>
+</div>
+{% endblock %}

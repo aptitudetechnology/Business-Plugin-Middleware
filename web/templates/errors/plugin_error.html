@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}Plugin Error{% endblock %}
+{% block content %}
+<div class="text-center">
+    <h1 class="display-1 fw-bold text-warning">
+        <i class="fas fa-puzzle-piece"></i>
+    </h1>
+    <p class="fs-3"><span class="text-warning">Plugin Error!</span> Service temporarily unavailable.</p>
+    <p class="lead">One or more plugin services are experiencing issues.</p>
+    
+    {% if plugin_name %}
+    <div class="alert alert-warning mt-4">
+        <h5><i class="fas fa-plug"></i> Affected Plugin</h5>
+        <p class="mb-0"><strong>{{ plugin_name }}</strong></p>
+        {% if error_message %}
+        <small class="text-muted">{{ error_message }}</small>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    <div class="mt-4">
+        <a href="{{ url_for('web.plugins') }}" class="btn btn-warning me-2">
+            <i class="fas fa-cog"></i> Check Plugin Status
+        </a>
+        <a href="{{ url_for('web.dashboard') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-home"></i> Back to Dashboard
+        </a>
+    </div>
+    
+    <div class="mt-4">
+        <small class="text-muted">
+            <i class="fas fa-info-circle"></i> 
+            Administrator: Check plugin logs and configuration in the plugin management section.
+        </small>
+    </div>
+</div>
+{% endblock %}
