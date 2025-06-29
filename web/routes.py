@@ -529,7 +529,9 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
         except Exception as e:
             logger.error(f"API upload error: {e}")
             return jsonify({'error': str(e)}), 500
-        
+    
+    return api
+
 
 def import_datetime():
     """Helper to import datetime module"""
