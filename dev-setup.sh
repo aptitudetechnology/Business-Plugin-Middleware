@@ -15,13 +15,20 @@ else
     exit 1
 fi
 
-# Check pip installation
+# Check pip installation and set command
+PIP_CMD=""
 if command_exists pip3; then
     echo "✅ pip3 found"
+    PIP_CMD="pip3"
+elif command_exists pip; then
+    echo "✅ pip found"
+    PIP_CMD="pip"
 else
-    echo "❌ pip3 not found. Please install pip."
+    echo "❌ Neither pip3 nor pip found. Please install pip."
     exit 1
 fi
+
+echo "📦 Using pip command: $PIP_CMD"
 
 # Create virtual environment
 if [ ! -d "venv" ]; then
@@ -37,23 +44,23 @@ source venv/bin/activate
 
 # Upgrade pip
 echo "📦 Upgrading pip..."
-pip install --upgrade pip
+$PIP_CMD install --upgrade pip
 
 # Install development dependencies
 echo "📦 Installing core dependencies..."
 echo "Installing from requirements.txt..."
-if pip install -r requirements.txt; then
+if $PIP_CMD install -r requirements.txt; then
     echo "✅ Core dependencies installed successfully"
 else
     echo "❌ Failed to install core dependencies"
     echo "Trying to install Flask manually..."
-    pip install Flask==2.3.3
+    $PIP_CMD install Flask==2.3.3
 fi
 
 # Install dev dependencies if file exists
 if [ -f "requirements-dev.txt" ]; then
     echo "📦 Installing development dependencies..."
-    pip install -r requirements-dev.txt
+    $PIP_CMD install -r requirements-dev.txt
 else
     echo "ℹ️  No requirements-dev.txt found, skipping dev dependencies"
 fi
@@ -96,7 +103,7 @@ if python3 -c "import flask; print(f'✅ Flask {flask.__version__} installed suc
     echo "Flask verification passed"
 else
     echo "❌ Flask not found, attempting to install..."
-    pip install Flask==2.3.3
+    $PIP_CMD install Flask==2.3.3
     if python3 -c "import flask; print(f'✅ Flask {flask.__version__} installed successfully')" 2>/dev/null; then
         echo "Flask installation successful"
     else
