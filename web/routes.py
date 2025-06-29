@@ -213,9 +213,23 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
                         else:
                             plugin_configs[plugin_name] = {}
             
+            # Create a dot-notation accessible object for template compatibility
+            class ConfigObject:
+                def __init__(self, data):
+                    for key, value in data.items():
+                        if isinstance(value, dict):
+                            setattr(self, key, ConfigObject(value))
+                        else:
+                            setattr(self, key, value)
+                            
+                def get(self, key, default=None):
+                    return getattr(self, key, default)
+            
+            config_obj = ConfigObject(plugin_configs)
+            
             # Prepare template data
             template_data = {
-                'config': plugin_configs,
+                'config': config_obj,
                 'log_levels': ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
             }
             
