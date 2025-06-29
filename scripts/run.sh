@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-echo "🚀 Starting Paperless-BigCapital Middleware..."
+echo "🚀 Starting Business Plugin Middleware..."
 
 # Get the directory of this script and set as project root
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"

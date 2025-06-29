@@ -179,7 +179,7 @@ def create_app(config_path: str = None) -> Flask:
     def inject_globals():
         """Inject global variables into templates"""
         return {
-            'app_name': 'Paperless-BigCapital Middleware',
+            'app_name': 'Business Plugin Middleware',
             'current_year': datetime.now().year
         }
     
@@ -290,7 +290,7 @@ def main():
     debug = config.getboolean('web_interface', 'debug', False)
     
     # Log startup information
-    app.logger.info(f"Starting Paperless-BigCapital Middleware on {host}:{port}")
+    app.logger.info(f"Starting Business Plugin Middleware on {host}:{port}")
     app.logger.info(f"Debug mode: {debug}")
     app.logger.info(f"Upload folder: {app.config['UPLOAD_FOLDER']}")
     app.logger.info(f"Max file size: {app.config['MAX_CONTENT_LENGTH']} bytes")
