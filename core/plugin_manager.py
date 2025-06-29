@@ -156,7 +156,7 @@ class PluginManager:
                 # Categorize the plugin
                 self._categorize_plugin(plugin_instance)
                 
-                self.logger.info(f"Initialized plugin: {plugin_name}")
+                logger.info(f"Initialized plugin: {plugin_name}")
                 return True
             else:
                 raise PluginError(f"Plugin initialization failed: {plugin_name}")
@@ -233,14 +233,14 @@ class PluginManager:
             blueprint = plugin.get_blueprint()
             if blueprint:
                 app.register_blueprint(blueprint, url_prefix=f'/plugins/{plugin.name}')
-                self.logger.info(f"Registered web blueprint for plugin: {plugin.name}")
+                logger.info(f"Registered web blueprint for plugin: {plugin.name}")
         
         # Register API plugin blueprints
         for plugin in self._api_plugins:
             api_blueprint = plugin.get_api_blueprint()
             if api_blueprint:
                 app.register_blueprint(api_blueprint, url_prefix=f'/api/plugins/{plugin.name}')
-                self.logger.info(f"Registered API blueprint for plugin: {plugin.name}")
+                logger.info(f"Registered API blueprint for plugin: {plugin.name}")
     
     def get_plugin(self, plugin_name: str) -> Optional[BasePlugin]:
         """Get a plugin instance by name"""
@@ -285,9 +285,9 @@ class PluginManager:
         for plugin_name, plugin in self._plugins.items():
             try:
                 plugin.cleanup()
-                self.logger.info(f"Cleaned up plugin: {plugin_name}")
+                logger.info(f"Cleaned up plugin: {plugin_name}")
             except Exception as e:
-                self.logger.error(f"Error cleaning up plugin {plugin_name}: {e}")
+                logger.error(f"Error cleaning up plugin {plugin_name}: {e}")
         
         self._plugins.clear()
         self._initialized_plugins.clear()
@@ -303,7 +303,7 @@ class PluginManager:
             try:
                 self._plugins[plugin_name].cleanup()
             except Exception as e:
-                self.logger.warning(f"Error cleaning up plugin {plugin_name}: {e}")
+                logger.warning(f"Error cleaning up plugin {plugin_name}: {e}")
             
             # Remove from tracking
             del self._plugins[plugin_name]
@@ -333,11 +333,11 @@ class PluginManager:
         
         for plugin_name in plugins_to_reload:
             try:
-                self.logger.info(f"Reloading plugin: {plugin_name}")
+                logger.info(f"Reloading plugin: {plugin_name}")
                 success = self.reload_plugin(plugin_name, app_context)
                 results[plugin_name] = success
             except Exception as e:
-                self.logger.error(f"Failed to reload plugin {plugin_name}: {e}")
+                logger.error(f"Failed to reload plugin {plugin_name}: {e}")
                 results[plugin_name] = False
         
         return results

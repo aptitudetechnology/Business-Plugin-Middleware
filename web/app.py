@@ -6,11 +6,11 @@ Main Flask Application with Modular Plugin Architecture
 
 import os
 import sys
-import logging
 from datetime import datetime
 import secrets
 
 from flask import Flask, render_template, request, jsonify
+from loguru import logger
 
 # Add project root to Python path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
