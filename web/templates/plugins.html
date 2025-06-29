@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}Plugins - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1><i class="fas fa-puzzle-piece"></i> Plugin Management</h1>
+        <p class="lead">Manage and configure system plugins</p>
+    </div>
+</div>
+
+{% if plugin_info %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-pie"></i> Overview</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>Total Discovered:</strong>
+                    <span class="badge bg-info">{{ plugin_info.total_discovered }}</span>
+                </div>
+                <div class="mb-3">
+                    <strong>Initialized:</strong>
+                    <span class="badge bg-success">{{ plugin_info.initialized }}</span>
+                </div>
+                <div class="mb-3">
+                    <strong>Failed:</strong>
+                    <span class="badge bg-danger">{{ plugin_info.failed }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-list"></i> Plugin Details</h5>
+            </div>
+            <div class="card-body">
+                {% if plugin_info.plugins %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Version</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for name, plugin in plugin_info.plugins.items() %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ plugin.name }}</strong>
+                                        {% if plugin.dependencies %}
+                                            <br>
+                                            <small class="text-muted">
+                                                Depends on: {{ plugin.dependencies | join(', ') }}
+                                            </small>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ plugin.version }}</td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ plugin.get('type', 'Unknown') }}</span>
+                                    </td>
+                                    <td>
+                                        {% if plugin.enabled %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check"></i> {{ plugin.status }}
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-danger">
+                                                <i class="fas fa-times"></i> {{ plugin.status }}
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary" onclick="reloadPlugin('{{ name }}')">
+                                                <i class="fas fa-sync-alt"></i>
+                                            </button>
+                                            <button class="btn btn-outline-info" onclick="showPluginConfig('{{ name }}')">
+                                                <i class="fas fa-cog"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center text-muted">
+                        <i class="fas fa-puzzle-piece fa-3x"></i>
+                        <p>No plugins found</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if plugin_info.failed_plugins %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5><i class="fas fa-exclamation-triangle"></i> Failed Plugins</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-danger">
+                    <strong>The following plugins failed to load:</strong>
+                    <ul class="mb-0 mt-2">
+                        {% for plugin in plugin_info.failed_plugins %}
+                        <li>{{ plugin }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <p class="mb-0">
+                    <small class="text-muted">
+                        Check the logs for detailed error information and ensure all plugin dependencies are installed.
+                    </small>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% else %}
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>Plugin system not available</strong><br>
+            The plugin system is either disabled or not properly configured.
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Plugin Configuration Modal -->
+<div class="modal fade" id="pluginConfigModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Plugin Configuration</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="pluginConfigContent">
+                    <!-- Plugin configuration will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="savePluginConfig()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function reloadPlugin(pluginName) {
+    if (confirm('Are you sure you want to reload the plugin "' + pluginName + '"?')) {
+        fetch('/api/plugins/' + pluginName + '/reload', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Plugin reloaded successfully');
+                location.reload();
+            } else {
+                alert('Failed to reload plugin: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Error: ' + error);
+        });
+    }
+}
+
+function showPluginConfig(pluginName) {
+    // This would load the plugin configuration form
+    document.getElementById('pluginConfigContent').innerHTML = 
+        '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading configuration...</div>';
+    
+    const modal = new bootstrap.Modal(document.getElementById('pluginConfigModal'));
+    modal.show();
+    
+    // Simulate loading configuration (replace with actual API call)
+    setTimeout(() => {
+        document.getElementById('pluginConfigContent').innerHTML = 
+            '<div class="alert alert-info">Plugin configuration interface would be loaded here.</div>';
+    }, 1000);
+}
+
+function savePluginConfig() {
+    // Implementation for saving plugin configuration
+    alert('Save configuration functionality would be implemented here');
+}
+</script>
+{% endblock %}

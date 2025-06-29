@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Document - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1><i class="fas fa-upload"></i> Upload Document</h1>
+        <p class="lead">Upload documents for processing by the plugin system</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-file-upload"></i> Document Upload</h5>
+            </div>
+            <div class="card-body">
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Select Document</label>
+                        <input type="file" class="form-control" id="file" name="file" required>
+                        <div class="form-text">
+                            {% if processing_stats and processing_stats.supported_formats %}
+                                Supported formats: {{ processing_stats.supported_formats | join(', ') }}
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="uploaded_by" class="form-label">Uploaded By</label>
+                        <input type="text" class="form-control" id="uploaded_by" name="uploaded_by" placeholder="Your name">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="tags" class="form-label">Tags</label>
+                        <input type="text" class="form-control" id="tags" name="tags" placeholder="invoice, expense, receipt (comma-separated)">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="Additional notes about this document"></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-upload"></i> Upload and Process
+                    </button>
+                </form>
+                
+                <div id="uploadProgress" class="mt-3" style="display: none;">
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div id="uploadResult" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-info-circle"></i> Processing Information</h5>
+            </div>
+            <div class="card-body">
+                {% if processing_stats %}
+                    <div class="mb-3">
+                        <strong>Active Processing Plugins:</strong>
+                        <span class="badge bg-primary">{{ processing_stats.total_plugins }}</span>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <strong>Max File Size:</strong>
+                        <span>{{ (processing_stats.max_file_size / 1024 / 1024) | round(1) }} MB</span>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <strong>Supported Formats:</strong>
+                        <div class="mt-2">
+                            {% for format in processing_stats.supported_formats %}
+                                <span class="badge bg-secondary me-1">{{ format }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    {% if processing_stats.active_plugins %}
+                        <div class="mb-3">
+                            <strong>Active Plugins:</strong>
+                            <ul class="list-unstyled mt-2">
+                                {% for plugin in processing_stats.active_plugins %}
+                                    <li><i class="fas fa-plug text-success"></i> {{ plugin }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Processing stats not available
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5><i class="fas fa-lightbulb"></i> Tips</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li><i class="fas fa-check text-success"></i> Ensure documents are clear and readable</li>
+                    <li><i class="fas fa-check text-success"></i> PDF files with text are processed faster</li>
+                    <li><i class="fas fa-check text-success"></i> Add relevant tags for better organization</li>
+                    <li><i class="fas fa-check text-success"></i> Include notes for context</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('uploadForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const progressDiv = document.getElementById('uploadProgress');
+    const progressBar = progressDiv.querySelector('.progress-bar');
+    const resultDiv = document.getElementById('uploadResult');
+    
+    // Show progress bar
+    progressDiv.style.display = 'block';
+    resultDiv.innerHTML = '';
+    
+    // Simulate progress (replace with actual progress tracking if available)
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+        progress += 10;
+        progressBar.style.width = progress + '%';
+        if (progress >= 90) {
+            clearInterval(progressInterval);
+        }
+    }, 200);
+    
+    fetch('/upload', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        clearInterval(progressInterval);
+        progressBar.style.width = '100%';
+        
+        setTimeout(() => {
+            progressDiv.style.display = 'none';
+            
+            if (data.success) {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <h5><i class="fas fa-check-circle"></i> Upload Successful!</h5>
+                        <p>${data.message}</p>
+                        ${data.result ? formatProcessingResult(data.result) : ''}
+                    </div>
+                `;
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h5><i class="fas fa-exclamation-circle"></i> Upload Failed</h5>
+                        <p>${data.error}</p>
+                    </div>
+                `;
+            }
+        }, 500);
+    })
+    .catch(error => {
+        clearInterval(progressInterval);
+        progressDiv.style.display = 'none';
+        resultDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <h5><i class="fas fa-exclamation-circle"></i> Error</h5>
+                <p>An error occurred: ${error.message}</p>
+            </div>
+        `;
+    });
+});
+
+function formatProcessingResult(result) {
+    let html = '<div class="mt-3"><h6>Processing Results:</h6>';
+    
+    if (result.processing_results) {
+        for (const [plugin, pluginResult] of Object.entries(result.processing_results)) {
+            const status = pluginResult.success ? 'success' : 'danger';
+            const icon = pluginResult.success ? 'check' : 'times';
+            
+            html += `
+                <div class="alert alert-${status} alert-sm">
+                    <strong><i class="fas fa-${icon}"></i> ${plugin}:</strong>
+                    ${pluginResult.success ? 'Processed successfully' : pluginResult.error}
+                </div>
+            `;
+        }
+    }
+    
+    html += '</div>';
+    return html;
+}
+</script>
+{% endblock %}

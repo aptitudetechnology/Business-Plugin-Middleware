@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1><i class="fas fa-tachometer-alt"></i> Dashboard</h1>
+        <p class="lead">Business Plugin Middleware - Modular Architecture</p>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Plugin Status Card -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-puzzle-piece"></i> Plugin Status</h5>
+            </div>
+            <div class="card-body">
+                {% if plugin_status %}
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <div class="text-center">
+                                <h3 class="text-success">{{ plugin_status.initialized }}</h3>
+                                <small class="text-muted">Active Plugins</small>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="text-center">
+                                <h3 class="text-danger">{{ plugin_status.failed }}</h3>
+                                <small class="text-muted">Failed Plugins</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if plugin_status.failed > 0 %}
+                        <div class="alert alert-warning mt-3">
+                            <small><strong>Failed plugins:</strong> {{ plugin_status.failed_plugins | join(', ') }}</small>
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <div class="text-center text-muted">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        <p>Plugin system not available</p>
+                    </div>
+                {% endif %}
+                
+                <div class="mt-3">
+                    <a href="{{ url_for('web.plugins') }}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-cog"></i> Manage Plugins
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Processing Stats Card -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-file-alt"></i> Document Processing</h5>
+            </div>
+            <div class="card-body">
+                {% if processing_stats %}
+                    <div class="mb-3">
+                        <small class="text-muted">Processing Plugins:</small>
+                        <span class="badge bg-primary">{{ processing_stats.total_plugins }}</span>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">Supported Formats:</small>
+                        <div>
+                            {% for format in processing_stats.supported_formats %}
+                                <span class="badge bg-secondary me-1">{{ format }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">Max File Size:</small>
+                        <span>{{ (processing_stats.max_file_size / 1024 / 1024) | round(1) }} MB</span>
+                    </div>
+                {% else %}
+                    <div class="text-center text-muted">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        <p>Processing stats not available</p>
+                    </div>
+                {% endif %}
+                
+                <div class="mt-3">
+                    <a href="{{ url_for('web.upload_document') }}" class="btn btn-success btn-sm">
+                        <i class="fas fa-upload"></i> Upload Document
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if menu_items %}
+<div class="row mt-4">
+    <div class="col-12">
+        <h3><i class="fas fa-plug"></i> Available Plugin Services</h3>
+    </div>
+    
+    {% for item in menu_items %}
+    <div class="col-md-4 mb-3">
+        <div class="card">
+            <div class="card-body text-center">
+                {% if item.icon %}
+                    <i class="fas {{ item.icon }} fa-2x text-primary mb-2"></i>
+                {% endif %}
+                <h5 class="card-title">{{ item.name }}</h5>
+                <p class="card-text">
+                    <small class="text-muted">Plugin: {{ item.plugin }}</small>
+                </p>
+                <a href="{{ item.url }}" class="btn btn-outline-primary">
+                    <i class="fas fa-external-link-alt"></i> Open
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="row mt-4">
+    <div class="col-12">
+        <h3><i class="fas fa-chart-bar"></i> System Status</h3>
+    </div>
+    
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 text-center">
+                        <h4 class="text-success"><i class="fas fa-check-circle"></i></h4>
+                        <small>System Online</small>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <h4 class="text-info"><i class="fas fa-database"></i></h4>
+                        <small>Database Connected</small>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <h4 class="text-primary"><i class="fas fa-server"></i></h4>
+                        <small>API Available</small>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <h4 class="text-warning"><i class="fas fa-tools"></i></h4>
+                        <small>Maintenance Mode</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
