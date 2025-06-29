@@ -10,44 +10,93 @@ from typing import Dict, List, Optional, Any
 from urllib.parse import urljoin
 
 from core.base_plugin import BasePlugin, ProcessingPlugin
-from core.exceptions import PluginError, PluginConfigurationError
+from core.exceptions imclass PaperlessNGXProcessingPlugin(ProcessingPlugin):
+    """Processing plugin for Paperless-NGX integration"""
+    
+    def __init__(self, config_or_name):
+        # Handle both config dict and plugin name string
+        if isinstance(config_or_name, dict):
+            config = config_or_name
+            super().__init__("paperless_ngx_processing", "1.0.0")
+        else:
+            # Plugin manager passes name as string
+            super().__init__(config_or_name, "1.0.0")
+            config = {}
+        
+        self.config = config
+        self.paperless_plugin = NoneuginError, PluginConfigurationError
 
 
 class PaperlessNGXPlugin(BasePlugin):
     """Plugin for integrating with Paperless-NGX document management system"""
     
-    def __init__(self, config: Dict[str, Any]):
-        super().__init__(config)
-        self.name = "paperless_ngx"
-        self.version = "1.0.0"
+    def __init__(self, config_or_name):
+        # Handle both config dict and plugin name string
+        if isinstance(config_or_name, dict):
+            config = config_or_name
+            super().__init__("paperless_ngx", "1.0.0")
+        else:
+            # Plugin manager passes name as string
+            super().__init__(config_or_name, "1.0.0")
+            config = {}
+        
         self.description = "Integration with Paperless-NGX document management system"
+        self.config = config
         
-        # Configuration
-        self.base_url = config.get('base_url', '').rstrip('/')
-        self.api_key = config.get('api_key', '')
-        self.timeout = config.get('timeout', 30)
-        
-        if not self.base_url or not self.api_key:
-            raise PluginConfigurationError("Paperless-NGX plugin requires 'base_url' and 'api_key' configuration")
-        
-        # Setup API client
-        self.session = requests.Session()
-        self.session.headers.update({
-            'Authorization': f'Token {self.api_key}',
-            'Content-Type': 'application/json'
-        })
+        # Configuration will be validated in initialize()
+        self.base_url = None
+        self.api_key = None
+        self.timeout = 30
+        self.session = None
         
         self.logger = logging.getLogger(f"{__name__}.{self.name}")
     
-    def initialize(self) -> bool:
+    def initialize(self, app_context: Dict[str, Any]) -> bool:
         """Initialize the plugin and test connection"""
         try:
+            # Setup configuration from config property
+            config = self.config or {}
+            self.base_url = config.get('base_url', '').rstrip('/')
+            self.api_key = config.get('api_key', '')
+            self.timeout = config.get('timeout', 30)
+            
+            # Check for placeholder or invalid configuration
+            if (not self.base_url or 
+                not self.api_key or 
+                self.base_url in ['http://localhost:8000', 'http://your-paperless-ngx-server:8000'] or
+                self.api_key in ['your_api_token_here', 'your-paperless-ngx-token']):
+                self.logger.info("Paperless-NGX plugin initialized with placeholder configuration (connection not tested)")
+                return True
+            
+            # Setup API client
+            self.session = requests.Session()
+            self.session.headers.update({
+                'Authorization': f'Token {self.api_key}',
+                'Content-Type': 'application/json'
+            })
+            
             # Test the connection
             response = self._make_request('GET', '/api/documents/', params={'page_size': 1})
             self.logger.info(f"Paperless-NGX plugin initialized successfully. API connection tested.")
             return True
         except Exception as e:
             self.logger.error(f"Failed to initialize Paperless-NGX plugin: {str(e)}")
+            # Still return True for placeholder configurations to allow startup
+            if (self.base_url in ['http://localhost:8000', 'http://your-paperless-ngx-server:8000'] or
+                self.api_key in ['your_api_token_here', 'your-paperless-ngx-token']):
+                self.logger.info("Continuing initialization despite connection error (placeholder config)")
+                return True
+            return False
+    
+    def cleanup(self) -> bool:
+        """Cleanup plugin resources"""
+        try:
+            if hasattr(self, 'session'):
+                self.session.close()
+            self.logger.info("Paperless-NGX plugin cleanup completed successfully.")
+            return True
+        except Exception as e:
+            self.logger.error(f"Error during Paperless-NGX plugin cleanup: {str(e)}")
             return False
     
     def _make_request(self, method: str, endpoint: str, **kwargs) -> requests.Response:
@@ -309,14 +358,42 @@ class PaperlessNGXPlugin(BasePlugin):
                 'description': 'Get document details (API)'
             }
         ]
+    
+    def cleanup(self) -> bool:
+        """Cleanup plugin resources"""
+        try:
+            if hasattr(self, 'session') and self.session:
+                self.session.close()
+            self.logger.info("Paperless-NGX plugin cleaned up successfully")
+            return True
+        except Exception as e:
+            self.logger.error(f"Error during cleanup: {e}")
+            return False
 
 
 class PaperlessNGXProcessingPlugin(ProcessingPlugin):
     """Processing plugin for Paperless-NGX integration"""
     
     def __init__(self, config: Dict[str, Any]):
-        super().__init__(config)
+        super().__init__("paperless_ngx_processing", "1.0.0")
+        self.config = config
         self.paperless_plugin = PaperlessNGXPlugin(config)
+    
+    def initialize(self, app_context: Dict[str, Any]) -> bool:
+        """Initialize the processing plugin"""
+        try:
+            # Create the main plugin instance
+            self.paperless_plugin = PaperlessNGXPlugin(self.config)
+            return self.paperless_plugin.initialize(app_context)
+        except Exception as e:
+            self.logger.error(f"Failed to initialize Paperless-NGX processing plugin: {str(e)}")
+            return False
+    
+    def cleanup(self) -> bool:
+        """Cleanup processing plugin resources"""
+        if self.paperless_plugin:
+            return self.paperless_plugin.cleanup()
+        return True
     
     def process_document(self, document_path: str, metadata: Dict[str, Any] = None) -> Dict[str, Any]:
         """Process and upload document to Paperless-NGX"""

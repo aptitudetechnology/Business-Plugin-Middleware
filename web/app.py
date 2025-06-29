@@ -91,12 +91,14 @@ def create_app(config_path: str = None) -> Flask:
         app.register_blueprint(web_blueprint)
         
         # Register plugin blueprints if plugin manager is available
-        if plugin_manager:
+        if plugin_manager and hasattr(plugin_manager, 'register_blueprints'):
             try:
                 plugin_manager.register_blueprints(app)
                 app.logger.info("Plugin blueprints registered successfully")
             except Exception as e:
                 app.logger.error(f"Failed to register plugin blueprints: {e}")
+        else:
+            app.logger.warning("Plugin manager not available or missing register_blueprints method")
         
         app.logger.info("Using modular route structure with plugin support")
     else:
