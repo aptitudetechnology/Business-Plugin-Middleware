@@ -5,7 +5,7 @@ import os
 import sys
 import importlib
 import importlib.util
-from typing import Dict, List, Type, Any # Add 'Type' and 'Any' as they are used later
+from typing import Dict, List, Type, Any, Optional  # Added 'Optional' to imports
 from pathlib import Path
 from loguru import logger
 from flask import Flask, Blueprint
