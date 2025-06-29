@@ -1,10 +1,7 @@
-"""
-Modular Routes with Plugin Support
-"""
 from flask import Blueprint, render_template, request, jsonify, current_app, redirect, url_for
 import logging
 from typing import Any, Dict
-
+from datetime import datetime # Moved this import to the top as suggested
 
 def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugin_manager: Any = None) -> Blueprint:
     """Create web interface blueprint with plugin support"""
@@ -18,8 +15,6 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
         """Formats a datetime string or object into a human-readable string."""
         if not value:
             return ""
-        
-        from datetime import datetime
         
         if isinstance(value, str):
             try:
@@ -38,6 +33,54 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
 
         return dt_obj.strftime(format)
     
+    # --- Helper for generating basic plugin config form ---
+    def generate_basic_config_form(plugin):
+        """Generate a basic configuration form for a plugin"""
+        form_html = f'<form id="pluginConfigForm">'
+        
+        # Add basic fields based on plugin config
+        config_data = getattr(plugin, 'config', {}) # Use a different variable name to avoid conflict with 'config' parameter
+        
+        for key, value in config_data.items():
+            if key in ['api_key', 'password', 'secret']:
+                # Password field for sensitive data
+                form_html += f'''
+                <div class="mb-3">
+                    <label for="config_{key}" class="form-label">{key.replace('_', ' ').title()}</label>
+                    <input type="password" class="form-control" id="config_{key}" name="{key}" 
+                            value="{'****' if value else ''}" placeholder="Enter {key.replace('_', ' ')}">
+                    <small class="form-text text-muted">Leave blank to keep current value</small>
+                </div>'''
+            elif isinstance(value, bool):
+                # Checkbox for boolean values
+                checked = 'checked' if value else ''
+                form_html += f'''
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="config_{key}" name="{key}" {checked}>
+                    <label class="form-check-label" for="config_{key}">
+                        {key.replace('_', ' ').title()}
+                    </label>
+                </div>'''
+            elif isinstance(value, (int, float)):
+                # Number input for numeric values
+                form_html += f'''
+                <div class="mb-3">
+                    <label for="config_{key}" class="form-label">{key.replace('_', ' ').title()}</label>
+                    <input type="number" class="form-control" id="config_{key}" name="{key}" 
+                            value="{value}" step="{'0.01' if isinstance(value, float) else '1'}">
+                </div>'''
+            else:
+                # Text input for other values
+                form_html += f'''
+                <div class="mb-3">
+                    <label for="config_{key}" class="form-label">{key.replace('_', ' ').title()}</label>
+                    <input type="text" class="form-control" id="config_{key}" name="{key}" 
+                            value="{value or ''}" placeholder="Enter {key.replace('_', ' ')}">
+                </div>'''
+        
+        form_html += '</form>'
+        return form_html
+
     # --- Routes ---
     @web.route('/')
     def dashboard():
@@ -69,10 +112,10 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
                     logger.error(f"Failed to get processing stats: {e}")
             
             return render_template('dashboard.html', 
-                                 plugin_status=plugin_status,
-                                 menu_items=menu_items,
-                                 processing_stats=processing_stats)
-        
+                                   plugin_status=plugin_status,
+                                   menu_items=menu_items,
+                                   processing_stats=processing_stats)
+            
         except Exception as e:
             logger.error(f"Dashboard error: {e}")
             return render_template('errors/500.html'), 500
@@ -95,7 +138,7 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
                     })
             
             return render_template('plugins.html', plugin_info=plugin_info)
-        
+            
         except Exception as e:
             logger.error(f"Plugins page error: {e}")
             return render_template('errors/500.html'), 500
@@ -123,9 +166,9 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
                     logger.error(f"Failed to get processing stats: {e}")
             
             return render_template('documents.html', 
-                                 recent_documents=recent_documents,
-                                 processing_stats=processing_stats)
-        
+                                   recent_documents=recent_documents,
+                                   processing_stats=processing_stats)
+            
         except Exception as e:
             logger.error(f"Documents page error: {e}")
             return render_template('errors/500.html'), 500
@@ -142,7 +185,7 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
                     logger.error(f"Failed to get processing stats: {e}")
             
             return render_template('upload.html', processing_stats=processing_stats)
-        
+            
         try:
             # Handle file upload
             if 'file' not in request.files:
@@ -185,7 +228,7 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
                     'success': False,
                     'error': result.get('error', 'Processing failed')
                 }), 500
-        
+            
         except Exception as e:
             logger.error(f"Upload error: {e}")
             return jsonify({'error': str(e)}), 500
@@ -234,7 +277,7 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             }
             
             return render_template('config.html', **template_data)
-        
+            
         except Exception as e:
             logger.error(f"Configuration page error: {e}")
             return render_template('errors/500.html'), 500
@@ -323,7 +366,7 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
                 flash('Failed to save configuration: Config manager not available.', 'error')
             
             return redirect(url_for('web.configuration'))
-        
+            
         except Exception as e:
             logger.error(f"Configuration update error: {e}")
             flash(f'Error saving configuration: {str(e)}', 'error')
@@ -341,9 +384,9 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             
             if not paperless_plugin:
                 return render_template('paperless_ngx_documents.html',
-                                     paperless_ngx_docs=[],
-                                     paperless_ngx_configured=False,
-                                     error_message="Paperless-NGX plugin not configured or unavailable")
+                                       paperless_ngx_docs=[],
+                                       paperless_ngx_configured=False,
+                                       error_message="Paperless-NGX plugin not configured or unavailable")
             
             # Get query parameters
             page = request.args.get('page', 1, type=int)
@@ -377,27 +420,27 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
                 plugin_status = paperless_plugin.get_status()
                 
                 return render_template('paperless_ngx_documents.html',
-                                     paperless_ngx_docs=documents,
-                                     pagination=pagination,
-                                     search_query=search_query,
-                                     paperless_ngx_configured=True,
-                                     paperless_base_url=paperless_plugin.base_url,
-                                     plugin_status=plugin_status)
+                                       paperless_ngx_docs=documents,
+                                       pagination=pagination,
+                                       search_query=search_query,
+                                       paperless_ngx_configured=True,
+                                       paperless_base_url=paperless_plugin.base_url,
+                                       plugin_status=plugin_status)
                 
             except Exception as e:
                 logger.error(f"Failed to fetch Paperless-NGX documents: {e}")
                 return render_template('paperless_ngx_documents.html',
-                                     paperless_ngx_docs=[],
-                                     paperless_ngx_configured=True,
-                                     error_message=f"Failed to fetch documents: {str(e)}",
-                                     search_query=search_query)
-        
+                                       paperless_ngx_docs=[],
+                                       paperless_ngx_configured=True,
+                                       error_message=f"Failed to fetch documents: {str(e)}",
+                                       search_query=search_query)
+            
         except Exception as e:
             logger.error(f"Paperless-NGX documents route error: {e}")
             return render_template('paperless_ngx_documents.html',
-                                 paperless_ngx_docs=[],
-                                 paperless_ngx_configured=False,
-                                 error_message="An error occurred while loading documents")
+                                   paperless_ngx_docs=[],
+                                   paperless_ngx_configured=False,
+                                   error_message="An error occurred while loading documents")
     
     @web.route('/paperless-ngx/document/<int:doc_id>/content')
     def paperless_ngx_document_content(doc_id):
@@ -410,9 +453,9 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             
             if not paperless_plugin:
                 return render_template('paperless_ngx_document_content.html',
-                                     document=None,
-                                     content=None,
-                                     error_message="Paperless-NGX plugin not configured")
+                                       document=None,
+                                       content=None,
+                                       error_message="Paperless-NGX plugin not configured")
             
             try:
                 # Get document metadata
@@ -422,22 +465,22 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
                 content = paperless_plugin.get_document_content(doc_id)
                 
                 return render_template('paperless_ngx_document_content.html',
-                                     document=document,
-                                     content=content)
+                                       document=document,
+                                       content=content)
                 
             except Exception as e:
                 logger.error(f"Failed to fetch document {doc_id}: {e}")
                 return render_template('paperless_ngx_document_content.html',
-                                     document=None,
-                                     content=None,
-                                     error_message=f"Failed to load document: {str(e)}")
-        
+                                       document=None,
+                                       content=None,
+                                       error_message=f"Failed to load document: {str(e)}")
+            
         except Exception as e:
             logger.error(f"Document content route error: {e}")
             return render_template('paperless_ngx_document_content.html',
-                                 document=None,
-                                 content=None,
-                                 error_message="An error occurred while loading document content")
+                                   document=None,
+                                   content=None,
+                                   error_message="An error occurred while loading document content")
     
     @web.route('/paperless-ngx/document/<int:doc_id>')
     def paperless_ngx_document_detail(doc_id):
@@ -459,7 +502,7 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             except Exception as e:
                 logger.error(f"Failed to fetch document {doc_id}: {e}")
                 return jsonify({'error': str(e)}), 500
-        
+            
         except Exception as e:
             logger.error(f"Document detail route error: {e}")
             return jsonify({'error': 'Internal server error'}), 500
@@ -509,10 +552,139 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             except Exception as e:
                 logger.error(f"Failed to process document {doc_id}: {e}")
                 return jsonify({'error': f'Failed to process document: {str(e)}'}), 500
-        
+            
         except Exception as e:
             logger.error(f"Process document API error: {e}")
             return jsonify({'error': 'Internal server error'}), 500
+
+    # NEW: API endpoint to get plugin configuration HTML
+    @web.route('/api/plugins/<plugin_name>/config', methods=['GET'])
+    def get_plugin_config(plugin_name):
+        """Get plugin configuration interface"""
+        try:
+            if not plugin_manager:
+                return jsonify({'error': 'Plugin manager not available'}), 500
+            
+            plugin = plugin_manager.get_plugin(plugin_name)
+            if not plugin:
+                return jsonify({'error': f'Plugin {plugin_name} not found'}), 404
+            
+            # Get plugin configuration form HTML
+            if hasattr(plugin, 'get_config_form'):
+                config_html = plugin.get_config_form()
+                return jsonify({
+                    'success': True,
+                    'html': config_html,
+                    'plugin_name': plugin_name
+                })
+            else:
+                # Generate a basic configuration form based on plugin config
+                config_html = generate_basic_config_form(plugin)
+                return jsonify({
+                    'success': True,
+                    'html': config_html,
+                    'plugin_name': plugin_name
+                })
+        
+        except Exception as e:
+            logger.error(f"Get plugin config error: {e}")
+            return jsonify({'error': str(e)}), 500
+
+    # NEW: API endpoint to save plugin configuration
+    @web.route('/api/plugins/<plugin_name>/config', methods=['POST'])
+    def save_plugin_config(plugin_name):
+        """Save plugin configuration"""
+        try:
+            if not plugin_manager:
+                return jsonify({'error': 'Plugin manager not available'}), 500
+            
+            plugin = plugin_manager.get_plugin(plugin_name)
+            if not plugin:
+                return jsonify({'error': f'Plugin {plugin_name} not found'}), 404
+            
+            # Get configuration data from request
+            config_data = request.get_json()
+            if not config_data:
+                return jsonify({'error': 'No configuration data provided'}), 400
+            
+            # Update plugin configuration
+            if hasattr(plugin, 'update_config'):
+                success = plugin.update_config(config_data)
+                if success:
+                    # Save to configuration file
+                    if config and hasattr(config, 'set_plugin_config'):
+                        config.set_plugin_config(plugin_name, plugin.config)
+                        if hasattr(config, 'save_plugin_configs'):
+                            config.save_plugin_configs()
+                    
+                    return jsonify({
+                        'success': True,
+                        'message': 'Configuration saved successfully'
+                    })
+                else:
+                    return jsonify({'error': 'Failed to update plugin configuration'}), 500
+            else:
+                # Basic configuration update
+                for key, value in config_data.items():
+                    if hasattr(plugin, key):
+                        setattr(plugin, key, value)
+                    plugin.config[key] = value
+                
+                # Save to configuration file
+                if config and hasattr(config, 'set_plugin_config'):
+                    config.set_plugin_config(plugin_name, plugin.config)
+                    if hasattr(config, 'save_plugin_configs'):
+                        config.save_plugin_configs()
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Configuration saved successfully'
+                })
+        
+        except Exception as e:
+            logger.error(f"Save plugin config error: {e}")
+            return jsonify({'error': str(e)}), 500
+
+    # NEW: API endpoint to test plugin connection
+    @web.route('/api/plugins/<plugin_name>/test-connection', methods=['POST'])
+    def test_plugin_connection(plugin_name):
+        """Test plugin connection"""
+        try:
+            if not plugin_manager:
+                return jsonify({'error': 'Plugin manager not available'}), 500
+            
+            plugin = plugin_manager.get_plugin(plugin_name)
+            if not plugin:
+                return jsonify({'error': f'Plugin {plugin_name} not found'}), 404
+            
+            # Get test configuration data
+            test_config = request.get_json() if request.is_json else None
+            
+            # Test connection
+            if hasattr(plugin, 'test_connection_with_config'):
+                success = plugin.test_connection_with_config(test_config)
+            elif hasattr(plugin, 'test_connection'):
+                success = plugin.test_connection()
+            else:
+                return jsonify({'error': 'Plugin does not support connection testing'}), 400
+            
+            if success:
+                return jsonify({
+                    'success': True,
+                    'message': 'Connection test successful'
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'Connection test failed'
+                })
+        
+        except Exception as e:
+            logger.error(f"Test plugin connection error: {e}")
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            })
 
     return web
 
@@ -528,7 +700,7 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
         """API health check"""
         health_data = {
             'status': 'healthy',
-            'timestamp': import_datetime().utcnow().isoformat(),
+            'timestamp': datetime.utcnow().isoformat(), # Corrected usage
             'components': {}
         }
         
@@ -568,7 +740,7 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             
             plugin_status = plugin_manager.get_plugin_status()
             return jsonify(plugin_status)
-        
+            
         except Exception as e:
             logger.error(f"API plugins error: {e}")
             return jsonify({'error': str(e)}), 500
@@ -592,7 +764,7 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
                 return jsonify({'success': True, 'message': f'Plugin {plugin_name} reloaded successfully'})
             else:
                 return jsonify({'success': False, 'error': f'Failed to reload plugin {plugin_name}'}), 500
-        
+            
         except Exception as e:
             logger.error(f"Plugin reload error: {e}")
             return jsonify({'error': str(e)}), 500
@@ -637,7 +809,7 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             result = doc_processor.process_document(file_path, metadata)
             
             return jsonify(result)
-        
+            
         except Exception as e:
             logger.error(f"API upload error: {e}")
             return jsonify({'error': str(e)}), 500
@@ -684,15 +856,9 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
                 'success': True,
                 'results': results
             })
-        
+            
         except Exception as e:
             logger.error(f"Connection test error: {e}")
             return jsonify({'error': str(e)}), 500
     
     return api
-
-
-def import_datetime():
-    """Helper to import datetime module"""
-    from datetime import datetime
-    return datetime
