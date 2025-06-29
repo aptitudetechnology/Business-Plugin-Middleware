@@ -33,8 +33,6 @@ jsonschema==4.19.2
 # File Handling
 pathlib2==2.3.7
 
-# Logging
-logging
 
 # Development Dependencies (Optional)
 # Uncomment for development
