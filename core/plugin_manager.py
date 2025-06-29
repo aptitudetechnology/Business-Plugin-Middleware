@@ -5,7 +5,7 @@ import os
 import sys
 import importlib
 import importlib.util
-from typing import Dict, List,                # Categorize the plugin
+from typing import Dict, List                # Categorize the plugin
                 self._categorize_plugin(plugin_instance)
                 
                 logger.info(f"Initialized plugin: {plugin_name}")
