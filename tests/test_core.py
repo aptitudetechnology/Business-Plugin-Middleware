@@ -1,5 +1,32 @@
-# Fix for the failing tests in test_core.py
-# Replace the TestProcessingWorkflow class methods that are failing
+# tests/test_core.py
+"""
+Test suite for core processing functionality.
+Tests document processing pipeline, OCR integration, and data extraction.
+"""
+
+import pytest
+import tempfile
+import os
+from unittest.mock import Mock, patch, MagicMock
+from pathlib import Path
+
+# Import core modules conditionally
+try:
+    from core.processor import Processor
+    from core.ocr import OCRProcessor
+    from core.extractor import DataExtractor
+    from core.models import Document, ProcessingStatus
+except ImportError:
+    # If modules don't exist yet, set to None
+    Processor = None
+    OCRProcessor = None
+    DataExtractor = None
+    Document = None
+    ProcessingStatus = None
+
+
+# ... your other test classes remain the same ...
+
 
 class TestProcessingWorkflow:
     """Test complete processing workflows"""
