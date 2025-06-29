@@ -190,32 +190,130 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             logger.error(f"Upload error: {e}")
             return jsonify({'error': str(e)}), 500
     
-    @web.route('/config')
+    @web.route('/config', methods=['GET', 'POST'])
     def configuration():
-        """Configuration page"""
+        """Configuration page with plugin settings"""
         try:
-            # Get current configuration (sanitized)
-            config_data = {}
-            if config:
-                # Only show non-sensitive configuration
-                config_data = {
-                    'web_interface': {
-                        'host': config.get('web_interface', 'host', '0.0.0.0'),
-                        'port': config.get('web_interface', 'port', '5000'),
-                        'debug': config.getboolean('web_interface', 'debug', False)
-                    },
-                    'processing': {
-                        'upload_folder': config.get('processing', 'upload_folder', 'uploads'),
-                        'max_file_size': config.get('processing', 'max_file_size', '10485760'),
-                        'allowed_extensions': config.get('processing', 'allowed_extensions', 'pdf,png,jpg,jpeg,tiff,txt')
-                    }
-                }
+            if request.method == 'POST':
+                # Handle configuration updates
+                return handle_configuration_update()
             
-            return render_template('config.html', config_data=config_data)
+            # GET request - show configuration form
+            # Get current plugin configurations
+            plugin_configs = {}
+            if plugin_manager:
+                for plugin_name in ['paperless_ngx', 'bigcapital', 'ocr_processor']:
+                    plugin = plugin_manager.get_plugin(plugin_name)
+                    if plugin:
+                        plugin_configs[plugin_name] = plugin.config
+                    else:
+                        # Get from config file if plugin not loaded
+                        if config and hasattr(config, 'get_plugin_config'):
+                            plugin_configs[plugin_name] = config.get_plugin_config(plugin_name)
+                        else:
+                            plugin_configs[plugin_name] = {}
+            
+            # Prepare template data
+            template_data = {
+                'config': plugin_configs,
+                'log_levels': ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+            }
+            
+            return render_template('config.html', **template_data)
         
         except Exception as e:
             logger.error(f"Configuration page error: {e}")
             return render_template('errors/500.html'), 500
+    
+    def handle_configuration_update():
+        """Handle configuration form submission"""
+        try:
+            from flask import flash, redirect, url_for
+            
+            updated_configs = {}
+            
+            # Paperless-NGX Configuration
+            paperless_config = {
+                'enabled': 'paperless_enabled' in request.form,
+                'base_url': request.form.get('paperless_base_url', '').strip(),
+                'timeout': int(request.form.get('paperless_timeout', 30)),
+                'page_size': int(request.form.get('paperless_page_size', 25)),
+                'auto_refresh': 'paperless_auto_refresh' in request.form
+            }
+            
+            # Only update API key if provided
+            api_key = request.form.get('paperless_api_key', '').strip()
+            if api_key and api_key != '****':
+                paperless_config['api_key'] = api_key
+            elif plugin_manager:
+                # Keep existing API key
+                existing_plugin = plugin_manager.get_plugin('paperless_ngx')
+                if existing_plugin and hasattr(existing_plugin, 'api_key'):
+                    paperless_config['api_key'] = existing_plugin.api_key
+            
+            updated_configs['paperless_ngx'] = paperless_config
+            
+            # BigCapital Configuration
+            bigcapital_config = {
+                'enabled': 'bigcapital_enabled' in request.form,
+                'base_url': request.form.get('bigcapital_base_url', '').strip(),
+                'default_due_days': int(request.form.get('bigcapital_default_due_days', 30)),
+                'auto_sync': 'bigcapital_auto_sync' in request.form
+            }
+            
+            # Only update API key if provided
+            api_key = request.form.get('bigcapital_api_key', '').strip()
+            if api_key and api_key != '****':
+                bigcapital_config['api_key'] = api_key
+            elif plugin_manager:
+                # Keep existing API key
+                existing_plugin = plugin_manager.get_plugin('bigcapital')
+                if existing_plugin and hasattr(existing_plugin, 'api_key'):
+                    bigcapital_config['api_key'] = existing_plugin.api_key
+            
+            updated_configs['bigcapital'] = bigcapital_config
+            
+            # OCR Processor Configuration
+            ocr_config = {
+                'enabled': 'ocr_enabled' in request.form,
+                'tesseract_path': request.form.get('ocr_tesseract_path', '/usr/bin/tesseract').strip(),
+                'languages': [lang.strip() for lang in request.form.get('ocr_languages', 'eng').split(',') if lang.strip()],
+                'confidence_threshold': int(request.form.get('ocr_confidence_threshold', 50)),
+                'preprocess_images': 'ocr_preprocess_images' in request.form
+            }
+            
+            updated_configs['ocr_processor'] = ocr_config
+            
+            # Save configurations
+            if config and hasattr(config, 'set_plugin_config'):
+                for plugin_name, plugin_config in updated_configs.items():
+                    config.set_plugin_config(plugin_name, plugin_config)
+                
+                # Save to file
+                if hasattr(config, 'save_plugin_configs'):
+                    config.save_plugin_configs()
+                
+                flash('Configuration saved successfully!', 'success')
+                logger.info("Plugin configurations updated successfully")
+                
+                # Optionally restart plugins with new configuration
+                if plugin_manager:
+                    try:
+                        # Reload plugins with new configuration
+                        plugin_manager.reload_plugins()
+                        flash('Plugins reloaded with new configuration.', 'info')
+                    except Exception as e:
+                        logger.warning(f"Failed to reload plugins: {e}")
+                        flash('Configuration saved, but plugin reload failed. Restart may be required.', 'warning')
+            else:
+                flash('Failed to save configuration: Config manager not available.', 'error')
+            
+            return redirect(url_for('web.configuration'))
+        
+        except Exception as e:
+            logger.error(f"Configuration update error: {e}")
+            flash(f'Error saving configuration: {str(e)}', 'error')
+            return redirect(url_for('web.configuration'))
     
     # Paperless-NGX Routes
     @web.route('/paperless-ngx/documents')
@@ -528,6 +626,53 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
         
         except Exception as e:
             logger.error(f"API upload error: {e}")
+            return jsonify({'error': str(e)}), 500
+    
+    @api.route('/test-connections', methods=['POST'])
+    def test_connections():
+        """Test plugin connections"""
+        try:
+            results = {}
+            
+            if plugin_manager:
+                # Test each plugin connection
+                for plugin_name in ['paperless_ngx', 'bigcapital', 'ocr_processor']:
+                    plugin = plugin_manager.get_plugin(plugin_name)
+                    if plugin:
+                        try:
+                            # Test connection based on plugin type
+                            if hasattr(plugin, 'test_connection'):
+                                success = plugin.test_connection()
+                                results[plugin_name] = {
+                                    'success': success,
+                                    'message': 'Connected successfully' if success else 'Connection failed'
+                                }
+                            else:
+                                # For plugins without test_connection method, check if initialized
+                                results[plugin_name] = {
+                                    'success': True,
+                                    'message': 'Plugin initialized'
+                                }
+                        except Exception as e:
+                            results[plugin_name] = {
+                                'success': False,
+                                'error': str(e)
+                            }
+                    else:
+                        results[plugin_name] = {
+                            'success': False,
+                            'error': 'Plugin not loaded'
+                        }
+            else:
+                return jsonify({'error': 'Plugin manager not available'}), 500
+            
+            return jsonify({
+                'success': True,
+                'results': results
+            })
+        
+        except Exception as e:
+            logger.error(f"Connection test error: {e}")
             return jsonify({'error': str(e)}), 500
     
     return api

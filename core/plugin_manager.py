@@ -312,3 +312,22 @@ class PluginManager:
         
         # Reload and initialize
         return self.initialize_plugin(plugin_name, app_context)
+    
+    def reload_plugins(self, app_context: Dict[str, Any] = None) -> Dict[str, bool]:
+        """Reload all plugins with updated configuration"""
+        if app_context is None:
+            app_context = {}
+        
+        results = {}
+        plugins_to_reload = list(self._plugins.keys())
+        
+        for plugin_name in plugins_to_reload:
+            try:
+                self.logger.info(f"Reloading plugin: {plugin_name}")
+                success = self.reload_plugin(plugin_name, app_context)
+                results[plugin_name] = success
+            except Exception as e:
+                self.logger.error(f"Failed to reload plugin {plugin_name}: {e}")
+                results[plugin_name] = False
+        
+        return results

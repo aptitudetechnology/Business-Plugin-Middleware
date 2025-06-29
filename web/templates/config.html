@@ -1,6 +1,316 @@
 {% extends "base.html" %}
 
-{% block title %}Configuration - {{ super() }}{% endblock %}
+{% block title %}Configuration - Business Plugin Middleware{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-cogs me-2"></i>
+        Configuration
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="testConnections()">
+            <i class="fas fa-plug me-1"></i> Test Connections
+        </button>
+    </div>
+</div>
+
+<div class="main-content">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('web.configuration') }}">
+        <!-- Paperless-NGX Configuration -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3 class="card-title mb-0">
+                    <i class="fas fa-file-alt me-2"></i>
+                    Paperless-NGX Configuration
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="paperless_base_url" class="form-label">Base URL</label>
+                        <input type="text" class="form-control" id="paperless_base_url" name="paperless_base_url"
+                               value="{{ config.paperless_ngx.base_url if config.paperless_ngx else '' }}"
+                               placeholder="https://your-paperless-instance.com">
+                        <div class="form-text">Full URL to your Paperless-NGX instance</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="paperless_api_key" class="form-label">API Key</label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="paperless_api_key" name="paperless_api_key" 
+                                   value="{{ '****' if config.paperless_ngx.api_key else '' }}"
+                                   placeholder="Your API key">
+                            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('paperless_api_key')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <div class="form-text">Leave blank to keep existing key</div>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label for="paperless_timeout" class="form-label">Request Timeout (seconds)</label>
+                        <input type="number" class="form-control" id="paperless_timeout" name="paperless_timeout"
+                               value="{{ config.paperless_ngx.timeout if config.paperless_ngx else 30 }}" min="5" max="300">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="paperless_page_size" class="form-label">Page Size</label>
+                        <input type="number" class="form-control" id="paperless_page_size" name="paperless_page_size"
+                               value="{{ config.paperless_ngx.page_size if config.paperless_ngx else 25 }}" min="10" max="100">
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-check mt-4 pt-2">
+                            <input type="checkbox" class="form-check-input" id="paperless_auto_refresh" name="paperless_auto_refresh"
+                                   {% if config.paperless_ngx and config.paperless_ngx.auto_refresh %}checked{% endif %}>
+                            <label class="form-check-label" for="paperless_auto_refresh">
+                                Auto-refresh documents
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="paperless_enabled" name="paperless_enabled"
+                                   {% if config.paperless_ngx and config.paperless_ngx.enabled %}checked{% endif %}>
+                            <label class="form-check-label" for="paperless_enabled">
+                                <strong>Enable Paperless-NGX Plugin</strong>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BigCapital Configuration -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3 class="card-title mb-0">
+                    <i class="fas fa-chart-line me-2"></i>
+                    BigCapital Configuration
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="bigcapital_base_url" class="form-label">Base URL</label>
+                        <input type="text" class="form-control" id="bigcapital_base_url" name="bigcapital_base_url"
+                               value="{{ config.bigcapital.base_url if config.bigcapital else '' }}"
+                               placeholder="https://api.bigcapital.ly">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="bigcapital_api_key" class="form-label">API Key</label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="bigcapital_api_key" name="bigcapital_api_key"
+                                   value="{{ '****' if config.bigcapital.api_key else '' }}"
+                                   placeholder="Your API key">
+                            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('bigcapital_api_key')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <div class="form-text">Leave blank to keep existing key</div>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label for="bigcapital_default_due_days" class="form-label">Default Due Days</label>
+                        <input type="number" class="form-control" id="bigcapital_default_due_days" name="bigcapital_default_due_days"
+                               value="{{ config.bigcapital.default_due_days if config.bigcapital else 30 }}" min="1" max="365">
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-check mt-4 pt-2">
+                            <input type="checkbox" class="form-check-input" id="bigcapital_auto_sync" name="bigcapital_auto_sync"
+                                   {% if config.bigcapital and config.bigcapital.auto_sync %}checked{% endif %}>
+                            <label class="form-check-label" for="bigcapital_auto_sync">
+                                Auto-sync data
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-check mt-4 pt-2">
+                            <input type="checkbox" class="form-check-input" id="bigcapital_enabled" name="bigcapital_enabled"
+                                   {% if config.bigcapital and config.bigcapital.enabled %}checked{% endif %}>
+                            <label class="form-check-label" for="bigcapital_enabled">
+                                <strong>Enable BigCapital Plugin</strong>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- OCR Processor Configuration -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3 class="card-title mb-0">
+                    <i class="fas fa-eye me-2"></i>
+                    OCR Processor Configuration
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="ocr_tesseract_path" class="form-label">Tesseract Path</label>
+                        <input type="text" class="form-control" id="ocr_tesseract_path" name="ocr_tesseract_path"
+                               value="{{ config.ocr_processor.tesseract_path if config.ocr_processor else '/usr/bin/tesseract' }}"
+                               placeholder="/usr/bin/tesseract">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="ocr_languages" class="form-label">Languages</label>
+                        <input type="text" class="form-control" id="ocr_languages" name="ocr_languages"
+                               value="{{ config.ocr_processor.languages | join(',') if config.ocr_processor and config.ocr_processor.languages else 'eng' }}"
+                               placeholder="eng,fra,deu">
+                        <div class="form-text">Comma-separated language codes</div>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label for="ocr_confidence_threshold" class="form-label">Confidence Threshold</label>
+                        <input type="number" class="form-control" id="ocr_confidence_threshold" name="ocr_confidence_threshold"
+                               value="{{ config.ocr_processor.confidence_threshold if config.ocr_processor else 50 }}" min="0" max="100">
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-check mt-4 pt-2">
+                            <input type="checkbox" class="form-check-input" id="ocr_preprocess_images" name="ocr_preprocess_images"
+                                   {% if config.ocr_processor and config.ocr_processor.preprocess_images %}checked{% endif %}>
+                            <label class="form-check-label" for="ocr_preprocess_images">
+                                Preprocess images
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-check mt-4 pt-2">
+                            <input type="checkbox" class="form-check-input" id="ocr_enabled" name="ocr_enabled"
+                                   {% if config.ocr_processor and config.ocr_processor.enabled %}checked{% endif %}>
+                            <label class="form-check-label" for="ocr_enabled">
+                                <strong>Enable OCR Processor</strong>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="d-flex justify-content-end gap-2 mb-4">
+            <button type="button" class="btn btn-secondary" onclick="resetForm()">
+                <i class="fas fa-undo me-1"></i> Reset
+            </button>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save me-1"></i> Save Configuration
+            </button>
+        </div>
+    </form>
+</div>
+
+<style>
+.card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.form-text {
+    font-size: 0.875rem;
+}
+
+.alert {
+    border-radius: 0.375rem;
+}
+</style>
+
+<script>
+function togglePassword(fieldId) {
+    const field = document.getElementById(fieldId);
+    const button = field.nextElementSibling.querySelector('i');
+    
+    if (field.type === 'password') {
+        field.type = 'text';
+        button.classList.remove('fa-eye');
+        button.classList.add('fa-eye-slash');
+    } else {
+        field.type = 'password';
+        button.classList.remove('fa-eye-slash');
+        button.classList.add('fa-eye');
+    }
+}
+
+function resetForm() {
+    if (confirm('Are you sure you want to reset all configuration changes?')) {
+        document.querySelector('form').reset();
+    }
+}
+
+function testConnections() {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    
+    button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Testing...';
+    button.disabled = true;
+    
+    fetch('/api/test-connections', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show connection test results
+            let message = 'Connection Test Results:\\n\\n';
+            for (const [plugin, result] of Object.entries(data.results)) {
+                message += `${plugin}: ${result.success ? '✅ Connected' : '❌ Failed - ' + result.error}\\n`;
+            }
+            alert(message);
+        } else {
+            alert('Failed to test connections: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Error testing connections: ' + error);
+    })
+    .finally(() => {
+        button.innerHTML = originalText;
+        button.disabled = false;
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-save warning
+    let formChanged = false;
+    const form = document.querySelector('form');
+    const inputs = form.querySelectorAll('input, select, textarea');
+    
+    inputs.forEach(input => {
+        input.addEventListener('change', () => {
+            formChanged = true;
+        });
+    });
+    
+    window.addEventListener('beforeunload', (e) => {
+        if (formChanged) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+    
+    form.addEventListener('submit', () => {
+        formChanged = false;
+    });
+});
+</script>
+{% endblock %}
 
 {% block content %}
 <div class="row">
