@@ -5,18 +5,7 @@ import os
 import sys
 import importlib
 import importlib.util
-from typing import Dict, List                # Categorize the plugin
-                self._categorize_plugin(plugin_instance)
-                
-                logger.info(f"Initialized plugin: {plugin_name}")
-                return True
-            else:
-                raise PluginError(f"Plugin {plugin_name} initialization failed")
-                
-        except Exception as e:
-            logger.error(f"Failed to initialize plugin {plugin_name}: {e}")
-            self._failed_plugins.append(plugin_name)
-            return Falseype, Any
+from typing import Dict, List, Type, Any # Add 'Type' and 'Any' as they are used later
 from pathlib import Path
 from loguru import logger
 from flask import Flask, Blueprint
@@ -27,17 +16,17 @@ from .exceptions import PluginError, PluginNotFoundError, PluginDependencyError
 
 class PluginManager:
     """Manages plugin loading, initialization, and lifecycle"""
-    
+
     def __init__(self, plugins_directory: str, config: Any = None):
         self.plugins_directory = Path(plugins_directory)
         self.config = config
-        
+
         # Plugin storage
         self._plugins: Dict[str, BasePlugin] = {}
         self._plugin_classes: Dict[str, Type[BasePlugin]] = {}
         self._initialized_plugins: List[str] = []
         self._failed_plugins: List[str] = []
-        
+
         # Plugin categories
         self._web_plugins: List[WebPlugin] = []
         self._api_plugins: List[APIPlugin] = []
