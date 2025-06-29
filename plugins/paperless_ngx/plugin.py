@@ -63,8 +63,8 @@ class PaperlessNGXPlugin(BasePlugin):
             # Check for placeholder or invalid configuration
             if (not self.base_url or 
                 not self.api_key or 
-                self.base_url in ['http://localhost:8000', 'http://your-paperless-ngx-server:8000'] or
-                self.api_key in ['your_api_token_here', 'your-paperless-ngx-token']):
+                self.base_url in ['http://localhost:8000', 'http://your-paperless-ngx-server:8000', 'https://your-paperless-instance.com'] or
+                self.api_key in ['your_api_token_here', 'your-paperless-ngx-token', 'your-paperless-api-key']):
                 self.logger.info("Paperless-NGX plugin initialized with placeholder configuration (connection not tested)")
                 return True
             
@@ -82,8 +82,8 @@ class PaperlessNGXPlugin(BasePlugin):
         except Exception as e:
             self.logger.error(f"Failed to initialize Paperless-NGX plugin: {str(e)}")
             # Still return True for placeholder configurations to allow startup
-            if (self.base_url in ['http://localhost:8000', 'http://your-paperless-ngx-server:8000'] or
-                self.api_key in ['your_api_token_here', 'your-paperless-ngx-token']):
+            if (self.base_url in ['http://localhost:8000', 'http://your-paperless-ngx-server:8000', 'https://your-paperless-instance.com'] or
+                self.api_key in ['your_api_token_here', 'your-paperless-ngx-token', 'your-paperless-api-key']):
                 self.logger.info("Continuing initialization despite connection error (placeholder config)")
                 return True
             return False

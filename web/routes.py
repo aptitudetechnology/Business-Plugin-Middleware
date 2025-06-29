@@ -12,6 +12,33 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
     web = Blueprint('web', __name__)
     logger = logging.getLogger(__name__)
     
+    # --- Jinja2 Filters ---
+    @web.app_template_filter('datetime')
+    def format_datetime(value, format="%Y-%m-%d %H:%M"):
+        """Formats a datetime string or object into a human-readable string."""
+        if not value:
+            return ""
+        
+        from datetime import datetime
+        
+        if isinstance(value, str):
+            try:
+                # Attempt to parse common ISO formats (e.g., "2023-01-01T12:00:00Z")
+                if 'T' in value and ('Z' in value or '+' in value):
+                    dt_obj = datetime.fromisoformat(value.replace('Z', '+00:00') if 'Z' in value else value)
+                else: # Attempt to parse a common date-time string without timezone
+                    dt_obj = datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                logger.warning(f"Could not parse datetime string: {value}")
+                return value # Return original value if parsing fails
+        elif isinstance(value, datetime):
+            dt_obj = value
+        else:
+            return value # Return as is if not string or datetime object
+
+        return dt_obj.strftime(format)
+    
+    # --- Routes ---
     @web.route('/')
     def dashboard():
         """Main dashboard with plugin information"""
