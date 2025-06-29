@@ -26,6 +26,12 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Before installing requirements
+RUN pip install --upgrade pip
+
+# Then install requirements
+RUN pip install --no-cache-dir -r requirements.txt
+
 # Configure ImageMagick policy for PDF processing (required for paperless-ngx compatibility)
 RUN sed -i 's/<policy domain="coder" rights="none" pattern="PDF" \/>/<policy domain="coder" rights="read|write" pattern="PDF" \/>/g' /etc/ImageMagick-6/policy.xml
 
