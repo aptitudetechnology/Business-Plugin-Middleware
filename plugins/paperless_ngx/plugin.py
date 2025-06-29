@@ -14,23 +14,6 @@ from core.exceptions import PluginError, PluginConfigurationError
 
 
 class PaperlessNGXPlugin(BasePlugin):
-    """Processing plugin for Paperless-NGX integration"""
-    
-    def __init__(self, config_or_name):
-        # Handle both config dict and plugin name string
-        if isinstance(config_or_name, dict):
-            config = config_or_name
-            super().__init__("paperless_ngx_processing", "1.0.0")
-        else:
-            # Plugin manager passes name as string
-            super().__init__(config_or_name, "1.0.0")
-            config = {}
-        
-        self.config = config
-        self.paperless_plugin = NoneuginError, PluginConfigurationError
-
-
-class PaperlessNGXPlugin(BasePlugin):
     """Plugin for integrating with Paperless-NGX document management system"""
     
     def __init__(self, config_or_name):
@@ -100,6 +83,19 @@ class PaperlessNGXPlugin(BasePlugin):
             return True
         except Exception as e:
             self.logger.error(f"Error during Paperless-NGX plugin cleanup: {str(e)}")
+            return False
+    
+    def test_connection(self) -> bool:
+        """Test connection to Paperless-NGX API"""
+        try:
+            if not self.session or not self.base_url or not self.api_key:
+                return False
+            
+            # Make a simple API call to test connection
+            response = self._make_request('GET', '/api/documents/', params={'page_size': 1})
+            return response.status_code == 200
+        except Exception as e:
+            self.logger.error(f"Connection test failed: {str(e)}")
             return False
     
     def _make_request(self, method: str, endpoint: str, **kwargs) -> requests.Response:
