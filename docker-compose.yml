@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  # Main application
+  middleware:
+    build: .
+    container_name: business-plugin-middleware
+    ports:
+      - "5000:5000"
+    volumes:
+      # Configuration
+      - ./config:/app/config
+      # Data persistence
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
+      # Plugin development (optional)
+      - ./plugins:/app/plugins
+    environment:
+      - FLASK_ENV=production
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-this}
+      - DEBUG=${DEBUG:-False}
+    depends_on:
+      - redis
+    networks:
+      - middleware-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Redis for caching and background tasks (optional)
+  redis:
+    image: redis:7-alpine
+    container_name: middleware-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - middleware-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PostgreSQL database (alternative to SQLite for production)
+  # Uncomment if you want to use PostgreSQL instead of SQLite
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: middleware-postgres
+  #   environment:
+  #     POSTGRES_DB: ${POSTGRES_DB:-middleware}
+  #     POSTGRES_USER: ${POSTGRES_USER:-middleware}
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-middleware_password}
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   networks:
+  #     - middleware-network
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-middleware}"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+
+  # Nginx reverse proxy (optional)
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: middleware-nginx
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./certs:/etc/nginx/certs:ro
+  #   depends_on:
+  #     - middleware
+  #   networks:
+  #     - middleware-network
+  #   restart: unless-stopped
+
+networks:
+  middleware-network:
+    driver: bridge
+
+volumes:
+  redis_data:
+  # postgres_data:  # Uncomment if using PostgreSQL

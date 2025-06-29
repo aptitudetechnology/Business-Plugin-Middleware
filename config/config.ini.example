@@ -1,0 +1,80 @@
+# Business Plugin Middleware Configuration
+# Copy this file to config.ini and modify as needed
+
+[web_interface]
+host = 0.0.0.0
+port = 5000
+debug = False
+secret_key = your-secret-key-change-this-in-production
+
+[database]
+type = sqlite
+path = data/middleware.db
+# For PostgreSQL (uncomment and configure):
+# type = postgresql
+# host = localhost
+# port = 5432
+# name = middleware
+# user = middleware
+# password = middleware_password
+
+[processing]
+upload_folder = uploads
+max_file_size = 10485760
+allowed_extensions = pdf,png,jpg,jpeg,tiff,txt,doc,docx,xls,xlsx
+
+[logging]
+level = INFO
+file = logs/middleware.log
+
+[plugins]
+enabled = True
+auto_discover = True
+plugin_directory = plugins
+
+# Plugin-specific configuration sections
+[bigcapital]
+# BigCapital plugin configuration
+api_key = your-bigcapital-api-key
+base_url = https://api.bigcapital.ly
+enabled = True
+auto_sync = False
+sync_interval = 3600
+
+[ocr_processor]
+# OCR processor plugin configuration
+tesseract_path = /usr/bin/tesseract
+languages = eng
+enabled = True
+confidence_threshold = 50
+preprocess_images = True
+
+[invoice_ninja]
+# Invoice Ninja plugin configuration
+api_key = your-invoice-ninja-api-key
+base_url = https://your-instance.invoicing.co
+enabled = False
+
+[invoiceplane]
+# InvoicePlane plugin configuration
+api_key = your-invoiceplane-api-key
+base_url = https://your-invoiceplane-instance.com
+enabled = False
+
+[paperless_ngx]
+# Paperless-ngx plugin configuration
+api_key = your-paperless-api-key
+base_url = https://your-paperless-instance.com
+enabled = False
+
+[security]
+# Security settings
+allowed_hosts = localhost,127.0.0.1
+cors_origins = http://localhost:3000,http://localhost:5000
+max_request_size = 16777216
+
+[performance]
+# Performance settings
+cache_enabled = True
+cache_timeout = 3600
+max_workers = 4
