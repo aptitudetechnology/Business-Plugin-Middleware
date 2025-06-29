@@ -6,8 +6,8 @@ import logging
 from typing import Dict, Any, List
 from pathlib import Path
 
-from ...core.base_plugin import ProcessingPlugin
-from ...core.exceptions import ProcessingError
+from core.base_plugin import ProcessingPlugin
+from core.exceptions import ProcessingError
 
 
 class OCRProcessorPlugin(ProcessingPlugin):

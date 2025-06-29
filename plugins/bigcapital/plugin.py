@@ -5,8 +5,8 @@ import logging
 from typing import Dict, Any, List
 from flask import Blueprint, jsonify, request, render_template_string
 
-from ...core.base_plugin import IntegrationPlugin, WebPlugin
-from ...core.exceptions import IntegrationError
+from core.base_plugin import IntegrationPlugin, WebPlugin
+from core.exceptions import IntegrationError
 from .client import BigCapitalClient
 
 

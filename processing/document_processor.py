@@ -6,8 +6,8 @@ import logging
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 
-from ..core.base_plugin import ProcessingPlugin
-from ..core.exceptions import DocumentProcessingError, ProcessingError
+from core.base_plugin import ProcessingPlugin
+from core.exceptions import DocumentProcessingError, ProcessingError
 
 
 class DocumentProcessor:

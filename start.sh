@@ -112,4 +112,4 @@ echo ""
 echo "Press Ctrl+C to stop the application"
 echo ""
 
-python3 web/app.py
+python3 main.py
