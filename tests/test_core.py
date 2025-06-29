@@ -10,22 +10,13 @@ import os
 from unittest.mock import Mock, patch, MagicMock
 from pathlib import Path
 
-# Import core modules conditionally
-try:
-    from core.processor import Processor
-    from core.ocr import OCRProcessor
-    from core.extractor import DataExtractor
-    from core.models import Document, ProcessingStatus
-except ImportError:
-    # If modules don't exist yet, set to None
-    Processor = None
-    OCRProcessor = None
-    DataExtractor = None
-    Document = None
-    ProcessingStatus = None
-
-
-# ... your other test classes remain the same ...
+# Remove the try-except block for imports in the test file.
+# We rely on patch's create=True to handle cases where these modules/classes
+# might not yet exist or be fully implemented.
+# from core.processor import Processor  # Only import if you truly need the real class for a test
+# from core.ocr import OCRProcessor
+# from core.extractor import DataExtractor
+# from core.models import Document, ProcessingStatus
 
 
 class TestProcessingWorkflow:
