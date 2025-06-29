@@ -1,12 +1,15 @@
-{
-  "language": "python3",
-  "run": "python3 quick_start.py",
-  "entrypoint": "quick_start.py",
-  "hidden": [".venv", ".git"],
-  "modules": ["flask", "requests"],
-  "env": {
-    "PYTHONPATH": ".",
-    "FLASK_ENV": "development",
-    "FLASK_DEBUG": "1"
-  }
-}
+language = "python3"
+run = "python3 main.py"
+entrypoint = "main.py"
+hidden = [".venv", ".git", "venv", "logs", "uploads"]
+
+[env]
+PYTHONPATH = "."
+FLASK_ENV = "development" 
+FLASK_DEBUG = "1"
+
+[nix]
+channel = "stable-22_11"
+
+[deployment]
+run = ["sh", "-c", "python3 main.py"]

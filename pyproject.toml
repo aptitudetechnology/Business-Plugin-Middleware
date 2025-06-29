@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "business-plugin-middleware"
+version = "1.0.0"
+description = "A modular middleware system for business document processing and integration"
+authors = [{name = "Business Plugin Middleware Team"}]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "Flask>=2.3.0",
+    "Werkzeug>=2.3.0", 
+    "Jinja2>=3.1.0",
+    "python-dotenv>=1.0.0",
+    "requests>=2.28.0",
+    "Pillow>=9.0.0",
+    "pytesseract>=0.3.10"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-flask>=1.2.0",
+    "black>=22.0.0",
+    "flake8>=5.0.0"
+]
+
+[tool.setuptools]
+packages = ["api", "config", "core", "database", "plugins", "processing", "services", "utils", "web"]
