@@ -10,7 +10,10 @@ from typing import Dict, List, Optional, Any
 from urllib.parse import urljoin
 
 from core.base_plugin import BasePlugin, ProcessingPlugin
-from core.exceptions imclass PaperlessNGXProcessingPlugin(ProcessingPlugin):
+from core.exceptions import PluginError, PluginConfigurationError
+
+
+class PaperlessNGXPlugin(BasePlugin):
     """Processing plugin for Paperless-NGX integration"""
     
     def __init__(self, config_or_name):
