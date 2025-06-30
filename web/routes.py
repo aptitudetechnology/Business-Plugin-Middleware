@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify, current_app, redirect, url_for
 from loguru import logger
 from typing import Any, Dict
-from datetime import datetime # Moved this import to the top as suggested
+from datetime import datetime # Moved this import to the top as suggestedlogger
 
 def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugin_manager: Any = None) -> Blueprint:
     """Create web interface blueprint with plugin support"""
@@ -692,8 +692,27 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
     """Create API blueprint with plugin support"""
     
     api = Blueprint('api', __name__)
-    logger = logging.getLogger(__name__)
+   # logger = logging.getLogger(__name__)
+    # ... (lines above) ...
+
+def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugin_manager: Any = None) -> Blueprint:
+    """Create API blueprint with plugin support"""
     
+    api = Blueprint('api', __name__)
+    # REMOVE THIS LINE:
+    # logger = logging.getLogger(__name__)
+    # The 'logger' from 'loguru' is already imported at the top of the file.
+    
+    @api.route('/health')
+    def health():
+        """API health check"""
+        health_data = {
+            'status': 'healthy',
+            'timestamp': datetime.utcnow().isoformat(),
+            'components': {}
+        }
+        
+# ... (rest of the file) ...
     @api.route('/health')
     def health():
         """API health check"""
