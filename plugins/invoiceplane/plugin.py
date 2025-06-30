@@ -1,7 +1,7 @@
 """
 InvoicePlane Integration Plugin
 """
-fr            # self.client = InvoicePlaneClient(api_token, base_url)m loguru import logger
+from loguru import logger
 from typing import Dict, Any, List
 from flask import Blueprint, jsonify, request, render_template_string
 
