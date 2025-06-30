@@ -78,13 +78,18 @@ jobs:
 
       - name: Tag and Push Docker Image to Docker Hub
         # Tags the built Docker image and pushes it to Docker Hub.
+        # Using 'tr' and 'while read' for more robust tag splitting.
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
         run: |
-          IFS=',' read -ra TAGS <<< "${{ steps.meta.outputs.tags }}"
-          for tag in "${TAGS[@]}"; do
-            docker tag ${{ env.DOCKER_IMAGE_NAME }} $tag
-            docker push $tag
-            echo "Pushed: $tag"
+          set -euo pipefail # Exit immediately if a command exits with a non-zero status.
+
+          echo "${{ steps.meta.outputs.tags }}" | tr ',' '\n' | while IFS= read -r tag; do
+            if [ -n "$tag" ]; then # Ensure tag is not empty
+              docker tag ${{ env.DOCKER_IMAGE_NAME }} "$tag"
+              docker push "$tag"
+              echo "Pushed: $tag"
+            fi
+          done
 
   plugin-validation:
     runs-on: ubuntu-latest
