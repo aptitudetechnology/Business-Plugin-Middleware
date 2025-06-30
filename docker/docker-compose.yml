@@ -23,6 +23,7 @@ services:
     container_name: paperless-ngx
     restart: unless-stopped
     depends_on:
+      - paperless-db
       - paperless-redis
       - gotenberg
       - tika
@@ -34,6 +35,14 @@ services:
       - paperless_export:/usr/src/paperless/export
       - ../uploads:/usr/src/paperless/consume
     environment:
+      # Database configuration
+      PAPERLESS_DBENGINE: postgresql
+      PAPERLESS_DBHOST: paperless-db
+      PAPERLESS_DBPORT: 5432
+      PAPERLESS_DBNAME: paperless
+      PAPERLESS_DBUSER: paperless_user
+      PAPERLESS_DBPASS: your_secure_db_password
+      
       # Redis configuration
       PAPERLESS_REDIS: redis://paperless-redis:6379
       PAPERLESS_SECRET_KEY: change-me-please-in-production # <<< IMPORTANT: Change this!
@@ -89,8 +98,21 @@ services:
     restart: unless-stopped
     volumes:
       - paperless_redis:/data
+
+  # PostgreSQL database for Paperless-NGX
+  paperless-db:
+    image: docker.io/library/postgres:16-alpine
+    container_name: paperless-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: paperless
+      POSTGRES_USER: paperless_user
+      POSTGRES_PASSWORD: your_secure_db_password
+    volumes:
+      - paperless_db:/var/lib/postgresql/data
 volumes:
   paperless_data:
   paperless_media:
   paperless_export:  # Added for document exports
   paperless_redis:
+  paperless_db:  # PostgreSQL database storage
