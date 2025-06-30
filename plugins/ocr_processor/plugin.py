@@ -2,7 +2,7 @@
 Example OCR Processing Plugin
 """
 import os
-import logging
+from loguru import logger
 from typing import Dict, Any, List
 from pathlib import Path
 
@@ -36,26 +36,26 @@ class OCRProcessorPlugin(ProcessingPlugin):
                 if tesseract_path:
                     pytesseract.pytesseract.tesseract_cmd = tesseract_path
                 
-                self.logger.info("OCR processor initialized successfully")
+                logger.info("OCR processor initialized successfully")
                 return True
                 
             except ImportError as e:
-                self.logger.error(f"OCR libraries not available: {e}")
-                self.logger.info("Install required packages: pip install pytesseract pillow pymupdf")
+                logger.error(f"OCR libraries not available: {e}")
+                logger.info("Install required packages: pip install pytesseract pillow pymupdf")
                 return False
                 
         except Exception as e:
-            self.logger.error(f"Failed to initialize OCR processor: {e}")
+            logger.error(f"Failed to initialize OCR processor: {e}")
             return False
     
     def cleanup(self) -> bool:
         """Cleanup OCR processor resources"""
         try:
             # No specific cleanup needed for OCR libraries
-            self.logger.info("OCR processor cleaned up successfully")
+            logger.info("OCR processor cleaned up successfully")
             return True
         except Exception as e:
-            self.logger.error(f"Failed to cleanup OCR processor: {e}")
+            logger.error(f"Failed to cleanup OCR processor: {e}")
             return False
     
     def process_document(self, document_path: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
