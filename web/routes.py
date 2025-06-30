@@ -703,14 +703,7 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
     # logger = logging.getLogger(__name__)
     # The 'logger' from 'loguru' is already imported at the top of the file.
     
-    @api.route('/health')
-    def health():
-        """API health check"""
-        health_data = {
-            'status': 'healthy',
-            'timestamp': datetime.utcnow().isoformat(),
-            'components': {}
-        }
+    
         
 # ... (rest of the file) ...
     @api.route('/health')
