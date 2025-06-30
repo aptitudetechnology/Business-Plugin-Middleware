@@ -1,7 +1,7 @@
 """
 BigCapital Integration Plugin
 """
-import logging
+from loguru import logger
 from typing import Dict, Any, List
 from flask import Blueprint, jsonify, request, render_template_string
 
@@ -24,7 +24,7 @@ class BigCapitalPlugin(IntegrationPlugin, WebPlugin):
             # Get plugin configuration
             config = app_context.get('config')
             if not config:
-                self.logger.error("No configuration provided")
+                logger.error("No configuration provided")
                 return False
             
             # Initialize BigCapital client
@@ -32,21 +32,21 @@ class BigCapitalPlugin(IntegrationPlugin, WebPlugin):
             base_url = self.config.get('base_url', 'https://api.bigcapital.ly')
             
             if not api_key:
-                self.logger.error("BigCapital API key not configured")
+                logger.error("BigCapital API key not configured")
                 return False
             
             self.client = BigCapitalClient(api_key, base_url)
             
             # Test connection
             if not self.test_connection():
-                self.logger.error("Failed to connect to BigCapital")
+                logger.error("Failed to connect to BigCapital")
                 return False
             
-            self.logger.info("BigCapital plugin initialized successfully")
+            logger.info("BigCapital plugin initialized successfully")
             return True
             
         except Exception as e:
-            self.logger.error(f"Failed to initialize BigCapital plugin: {e}")
+            logger.error(f"Failed to initialize BigCapital plugin: {e}")
             return False
     
     def cleanup(self) -> bool:
@@ -55,10 +55,10 @@ class BigCapitalPlugin(IntegrationPlugin, WebPlugin):
             if self.client:
                 # Perform any necessary cleanup
                 pass
-            self.logger.info("BigCapital plugin cleaned up successfully")
+            logger.info("BigCapital plugin cleaned up successfully")
             return True
         except Exception as e:
-            self.logger.error(f"Failed to cleanup BigCapital plugin: {e}")
+            logger.error(f"Failed to cleanup BigCapital plugin: {e}")
             return False
     
     def test_connection(self) -> bool:
@@ -72,7 +72,7 @@ class BigCapitalPlugin(IntegrationPlugin, WebPlugin):
             return response is not None
             
         except Exception as e:
-            self.logger.error(f"BigCapital connection test failed: {e}")
+            logger.error(f"BigCapital connection test failed: {e}")
             return False
     
     def sync_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -93,7 +93,7 @@ class BigCapitalPlugin(IntegrationPlugin, WebPlugin):
                 raise IntegrationError(f"Unsupported sync type: {sync_type}")
             
         except Exception as e:
-            self.logger.error(f"BigCapital sync failed: {e}")
+            logger.error(f"BigCapital sync failed: {e}")
             return {
                 'success': False,
                 'error': str(e)
@@ -253,7 +253,7 @@ class BigCapitalPlugin(IntegrationPlugin, WebPlugin):
                                             recent_expenses=recent_expenses or [])
                 
             except Exception as e:
-                self.logger.error(f"BigCapital dashboard error: {e}")
+                logger.error(f"BigCapital dashboard error: {e}")
                 return f"Error: {str(e)}", 500
         
         @bp.route('/sync', methods=['GET', 'POST'])
@@ -339,7 +339,7 @@ class BigCapitalPlugin(IntegrationPlugin, WebPlugin):
         
         for field in required_fields:
             if not config.get(field):
-                self.logger.error(f"Missing required configuration field: {field}")
+                logger.error(f"Missing required configuration field: {field}")
                 return False
         
         return True
