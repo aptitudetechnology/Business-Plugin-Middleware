@@ -59,9 +59,9 @@ def create_app(config_path: str = None) -> Flask:
             plugin_manager = PluginManager(plugins_directory, config)
             
             # Discover and load plugins
-            app.logger.info("Discovering plugins...")
+            logger.info("Discovering plugins...")
             load_results = plugin_manager.load_all_plugins()
-            app.logger.info(f"Plugin load results: {load_results}")
+            logger.info(f"Plugin load results: {load_results}")
             
             # Initialize plugins with application context
             app_context = {
@@ -71,10 +71,10 @@ def create_app(config_path: str = None) -> Flask:
             }
             
             init_results = plugin_manager.initialize_all_plugins(app_context)
-            app.logger.info(f"Plugin initialization results: {init_results}")
+            logger.info(f"Plugin initialization results: {init_results}")
             
         except Exception as e:
-            app.logger.error(f"Plugin system initialization failed: {e}")
+            logger.error(f"Plugin system initialization failed: {e}")
             plugin_manager = None
     
     # Initialize document processor with plugin support
@@ -94,13 +94,13 @@ def create_app(config_path: str = None) -> Flask:
         if plugin_manager and hasattr(plugin_manager, 'register_blueprints'):
             try:
                 plugin_manager.register_blueprints(app)
-                app.logger.info("Plugin blueprints registered successfully")
+                logger.info("Plugin blueprints registered successfully")
             except Exception as e:
-                app.logger.error(f"Failed to register plugin blueprints: {e}")
+                logger.error(f"Failed to register plugin blueprints: {e}")
         else:
-            app.logger.warning("Plugin manager not available or missing register_blueprints method")
+            logger.warning("Plugin manager not available or missing register_blueprints method")
         
-        app.logger.info("Using modular route structure with plugin support")
+        logger.info("Using modular route structure with plugin support")
     else:
         # Legacy approach - global variable injection
         init_routes(config, db_manager, doc_processor)
@@ -109,7 +109,7 @@ def create_app(config_path: str = None) -> Flask:
         app.register_blueprint(api, url_prefix='/api')
         app.register_blueprint(web)
         
-        app.logger.info("Using legacy monolithic route structure")
+        logger.info("Using legacy monolithic route structure")
     
     # Configure logging
     setup_logging(app, config)
@@ -207,7 +207,7 @@ def create_app(config_path: str = None) -> Flask:
     # Plugin-specific error handler
     @app.errorhandler(MiddlewareError)
     def handle_middleware_error(error):
-        app.logger.error(f"Middleware error: {error}")
+        logger.error(f"Middleware error: {error}")
         if request.path.startswith('/api/'):
             return jsonify({'error': str(error)}), 500
         return render_template('errors/500.html', error=str(error)), 500
@@ -217,7 +217,7 @@ def create_app(config_path: str = None) -> Flask:
     def cleanup_plugins(error):
         """Cleanup plugins on app context teardown"""
         if error:
-            app.logger.error(f"Application context error: {error}")
+            logger.error(f"Application context error: {error}")
     
     # Shutdown handler
     def shutdown_handler():
@@ -225,9 +225,9 @@ def create_app(config_path: str = None) -> Flask:
         if plugin_manager:
             try:
                 plugin_manager.shutdown_all_plugins()
-                app.logger.info("Plugins shut down successfully")
+                logger.info("Plugins shut down successfully")
             except Exception as e:
-                app.logger.error(f"Error shutting down plugins: {e}")
+                logger.error(f"Error shutting down plugins: {e}")
     
     # Register shutdown handler
     import atexit
@@ -236,28 +236,35 @@ def create_app(config_path: str = None) -> Flask:
     return app
 
 def setup_logging(app: Flask, config: Config):
-    """Setup application logging"""
+    """Setup application logging with Loguru"""
     log_level = config.get('logging', 'level', 'INFO')
     log_file = config.get('logging', 'file', 'logs/middleware.log')
     
     # Create logs directory
     os.makedirs(os.path.dirname(log_file), exist_ok=True)
     
-    # Configure logging
-    logging.basicConfig(
-        level=getattr(logging, log_level.upper()),
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(log_file),
-            logging.StreamHandler()
-        ]
+    # Configure Loguru
+    # Remove default handler
+    logger.remove()
+    
+    # Add console handler
+    logger.add(
+        sys.stderr,
+        level=log_level.upper(),
+        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
     )
     
-    # Set Flask app logger
-    app.logger.setLevel(getattr(logging, log_level.upper()))
+    # Add file handler with rotation
+    logger.add(
+        log_file,
+        level=log_level.upper(),
+        format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}",
+        rotation="10 MB",
+        retention="1 week",
+        compression="zip"
+    )
     
-    # Set Flask app logger
-    app.logger.setLevel(getattr(logging, log_level.upper()))
+    logger.info(f"Logging configured with level: {log_level}, file: {log_file}")
 
 def main():
     """Main entry point"""
@@ -292,18 +299,18 @@ def main():
     debug = config.getboolean('web_interface', 'debug', False)
     
     # Log startup information
-    app.logger.info(f"Starting Business Plugin Middleware on {host}:{port}")
-    app.logger.info(f"Debug mode: {debug}")
-    app.logger.info(f"Upload folder: {app.config['UPLOAD_FOLDER']}")
-    app.logger.info(f"Max file size: {app.config['MAX_CONTENT_LENGTH']} bytes")
+    logger.info(f"Starting Business Plugin Middleware on {host}:{port}")
+    logger.info(f"Debug mode: {debug}")
+    logger.info(f"Upload folder: {app.config['UPLOAD_FOLDER']}")
+    logger.info(f"Max file size: {app.config['MAX_CONTENT_LENGTH']} bytes")
     
     # Run the application
     try:
         app.run(host=host, port=port, debug=debug)
     except KeyboardInterrupt:
-        app.logger.info("Application stopped by user")
+        logger.info("Application stopped by user")
     except Exception as e:
-        app.logger.error(f"Application error: {e}")
+        logger.error(f"Application error: {e}")
         raise
 
 if __name__ == '__main__':
