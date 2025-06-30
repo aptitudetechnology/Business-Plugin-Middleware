@@ -12,7 +12,6 @@ from .client import BigCapitalClient
 
 class BigCapitalPlugin(IntegrationPlugin):
     """BigCapital integration plugin with web interface"""
-    """BigCapital integration plugin with web interface"""
     
     def __init__(self, name: str, version: str = "1.0.0"):
         super().__init__(name, version)
