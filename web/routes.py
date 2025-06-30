@@ -146,9 +146,21 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
     def documents():
         """Document management page"""
         try:
-            # Get recent documents from database
+            # Get recent documents from Paperless-NGX plugin if available
             recent_documents = []
-            if db_manager:
+            paperless_plugin = None
+            
+            if plugin_manager:
+                paperless_plugin = plugin_manager.get_plugin('paperless_ngx')
+                if paperless_plugin and hasattr(paperless_plugin, 'get_recent_documents'):
+                    try:
+                        recent_documents = paperless_plugin.get_recent_documents(limit=50)
+                        logger.info(f"Retrieved {len(recent_documents)} documents from Paperless-NGX")
+                    except Exception as e:
+                        logger.error(f"Failed to get documents from Paperless-NGX: {e}")
+            
+            # Fallback: Get documents from local database
+            if not recent_documents and db_manager:
                 try:
                     # This would depend on your database schema
                     # For now, just return empty list
@@ -164,9 +176,18 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
                 except Exception as e:
                     logger.error(f"Failed to get processing stats: {e}")
             
+            # Add Paperless-NGX stats if available
+            if paperless_plugin and hasattr(paperless_plugin, 'get_stats'):
+                try:
+                    paperless_stats = paperless_plugin.get_stats()
+                    processing_stats.update(paperless_stats)
+                except Exception as e:
+                    logger.error(f"Failed to get Paperless-NGX stats: {e}")
+            
             return render_template('documents.html', 
                                    recent_documents=recent_documents,
-                                   processing_stats=processing_stats)
+                                   processing_stats=processing_stats,
+                                   paperless_available=paperless_plugin is not None)
             
         except Exception as e:
             logger.error(f"Documents page error: {e}")

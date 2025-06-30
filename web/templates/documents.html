@@ -82,11 +82,11 @@
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
-                                        <th>Name</th>
-                                        <th>Type</th>
-                                        <th>Size</th>
-                                        <th>Upload Date</th>
-                                        <th>Status</th>
+                                        <th>Title</th>
+                                        <th>Correspondent</th>
+                                        <th>Document Type</th>
+                                        <th>Created</th>
+                                        <th>Tags</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -94,35 +94,36 @@
                                     {% for document in recent_documents %}
                                     <tr>
                                         <td>
-                                            <i class="fas fa-file-{{ document.get('icon', 'alt') }}"></i>
-                                            {{ document.name }}
+                                            <i class="fas fa-file-alt"></i>
+                                            {{ document.title or document.original_file_name or 'Untitled Document' }}
                                         </td>
-                                        <td>{{ document.get('type', 'Unknown') }}</td>
-                                        <td>{{ document.get('size', 'N/A') | filesize }}</td>
-                                        <td>{{ document.get('upload_date', 'N/A') | datetime }}</td>
+                                        <td>{{ document.correspondent_name or 'None' }}</td>
+                                        <td>{{ document.document_type_name or 'None' }}</td>
+                                        <td>{{ document.created_formatted or document.created | datetime }}</td>
                                         <td>
-                                            {% set status = document.get('status', 'unknown') %}
-                                            {% if status == 'processed' %}
-                                                <span class="badge bg-success">Processed</span>
-                                            {% elif status == 'processing' %}
-                                                <span class="badge bg-warning">Processing</span>
-                                            {% elif status == 'failed' %}
-                                                <span class="badge bg-danger">Failed</span>
+                                            {% if document.tag_names %}
+                                                {% for tag in document.tag_names %}
+                                                    <span class="badge bg-secondary me-1">{{ tag }}</span>
+                                                {% endfor %}
                                             {% else %}
-                                                <span class="badge bg-secondary">{{ status.title() }}</span>
+                                                <span class="text-muted">No tags</span>
                                             {% endif %}
                                         </td>
                                         <td>
                                             <div class="btn-group btn-group-sm">
-                                                <a href="#" class="btn btn-outline-primary" title="View">
+                                                {% if document.preview_url %}
+                                                <a href="{{ document.preview_url }}" target="_blank" class="btn btn-outline-primary" title="View">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
-                                                <a href="#" class="btn btn-outline-secondary" title="Download">
+                                                {% endif %}
+                                                {% if document.download_url %}
+                                                <a href="{{ document.download_url }}" class="btn btn-outline-secondary" title="Download">
                                                     <i class="fas fa-download"></i>
                                                 </a>
-                                                <a href="#" class="btn btn-outline-danger" title="Delete">
-                                                    <i class="fas fa-trash"></i>
-                                                </a>
+                                                {% endif %}
+                                                <button class="btn btn-outline-info" title="Details" onclick="showDocumentDetails('{{ document.id }}')">
+                                                    <i class="fas fa-info-circle"></i>
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -134,7 +135,13 @@
                         <div class="text-center py-5">
                             <i class="fas fa-folder-open fa-4x text-muted mb-3"></i>
                             <h5 class="text-muted">No documents found</h5>
-                            <p class="text-muted">Upload your first document to get started.</p>
+                            {% if paperless_available %}
+                                <p class="text-muted">No documents found in Paperless-NGX.</p>
+                                <p class="text-muted small">Make sure your Paperless-NGX instance has documents and the plugin is configured correctly.</p>
+                            {% else %}
+                                <p class="text-muted">Paperless-NGX plugin is not available or not configured.</p>
+                                <p class="text-muted small">Configure the Paperless-NGX plugin in the <a href="{{ url_for('web.list_plugins') }}">Plugins</a> section.</p>
+                            {% endif %}
                             <a href="{{ url_for('web.upload_document') }}" class="btn btn-primary">
                                 <i class="fas fa-plus"></i> Upload Document
                             </a>
@@ -209,6 +216,12 @@ function refreshDocuments() {
 
 function showBulkActions() {
     alert('Bulk actions feature coming soon!');
+}
+
+function showDocumentDetails(documentId) {
+    // In a real implementation, this could show a modal with document details
+    // For now, just show a simple alert
+    alert(`Document details for document ID: ${documentId}\n\nThis feature would show detailed information about the document, including metadata, content preview, and processing history.`);
 }
 </script>
 {% endblock %}

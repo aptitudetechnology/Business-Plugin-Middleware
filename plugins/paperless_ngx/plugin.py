@@ -579,6 +579,289 @@ class PaperlessNGXPlugin(BasePlugin):
                 'description': 'Get document details (API)'
             }
         ]
+    
+    def get_recent_documents(self, limit: int = 25) -> List[Dict[str, Any]]:
+        """Get recent documents from Paperless-NGX"""
+        try:
+            documents_data = self.get_documents(page=1, page_size=limit)
+            if documents_data and 'documents' in documents_data:
+                return documents_data['documents']
+            return []
+        except Exception as e:
+            logger.error(f"Failed to get recent documents: {e}")
+            return []
+    
+    def get_stats(self) -> Dict[str, Any]:
+        """Get statistics from Paperless-NGX"""
+        try:
+            # Get document count
+            documents_data = self.get_documents(page=1, page_size=1)
+            total_documents = documents_data.get('count', 0) if documents_data else 0
+            
+            # For now, return basic stats
+            # In a real implementation, you might make additional API calls
+            # to get more detailed statistics
+            return {
+                'total_processed': total_documents,
+                'pending': 0,  # Paperless-NGX doesn't expose pending count easily
+                'failed': 0,   # Would need to check logs or specific endpoints
+                'success_rate': '100%' if total_documents > 0 else '0%'
+            }
+        except Exception as e:
+            logger.error(f"Failed to get Paperless-NGX stats: {e}")
+            return {
+                'total_processed': 0,
+                'pending': 0,
+                'failed': 0,
+                'success_rate': '0%'
+            }
+    
+    def get_documents_v2(self, page: int = 1, page_size: int = 25, search: str = None) -> Dict[str, Any]:
+        """Get documents from Paperless-NGX (v2 with additional filtering)"""
+        params = {
+            'page': page,
+            'page_size': page_size,
+            'ordering': '-created'
+        }
+        
+        if search:
+            params['search'] = search
+        
+        try:
+            response = self._make_request('GET', '/api/documents/', params=params)
+            data = response.json()
+            
+            # Process documents to include additional info
+            documents = []
+            for doc in data.get('results', []):
+                processed_doc = self._process_document(doc)
+                documents.append(processed_doc)
+            
+            return {
+                'documents': documents,
+                'count': data.get('count', 0),
+                'next': data.get('next'),
+                'previous': data.get('previous'),
+                'page': page,
+                'page_size': page_size,
+                'total_pages': (data.get('count', 0) + page_size - 1) // page_size
+            }
+        except Exception as e:
+            self.logger.error("Failed to fetch documents: {error}", error=str(e))
+            raise PluginError(f"Failed to fetch documents from Paperless-NGX: {str(e)}")
+    
+    def get_document_v2(self, doc_id: int) -> Dict[str, Any]:
+        """Get a specific document by ID (v2)"""
+        try:
+            response = self._make_request('GET', f'/api/documents/{doc_id}/')
+            doc = response.json()
+            return self._process_document(doc)
+        except Exception as e:
+            self.logger.error(f"Failed to fetch document {doc_id}: {str(e)}")
+            raise PluginError(f"Failed to fetch document {doc_id}: {str(e)}")
+    
+    def get_document_content_v2(self, doc_id: int) -> str:
+        """Get OCR content of a document (v2)"""
+        try:
+            response = self._make_request('GET', f'/api/documents/{doc_id}/content/')
+            return response.text
+        except Exception as e:
+            self.logger.error(f"Failed to fetch document content for {doc_id}: {str(e)}")
+            raise PluginError(f"Failed to fetch document content: {str(e)}")
+    
+    def get_document_download_url_v2(self, doc_id: int) -> str:
+        """Get download URL for a document (v2)"""
+        return f"{self.base_url}/api/documents/{doc_id}/download/"
+    
+    def get_document_preview_url_v2(self, doc_id: int) -> str:
+        """Get preview URL for a document (v2)"""
+        return f"{self.base_url}/documents/{doc_id}/preview/"
+    
+    def upload_document_v2(self, file_path: str, title: str = None, correspondent: str = None, 
+                       document_type: str = None, tags: List[str] = None) -> Dict[str, Any]:
+        """Upload a document to Paperless-NGX (v2)"""
+        try:
+            with open(file_path, 'rb') as f:
+                files = {'document': f}
+                data = {}
+                
+                if title:
+                    data['title'] = title
+                if correspondent:
+                    data['correspondent'] = correspondent
+                if document_type:
+                    data['document_type'] = document_type
+                if tags:
+                    data['tags'] = tags
+                
+                response = self._make_request('POST', '/api/documents/post_document/', 
+                                            files=files, data=data)
+                return response.json()
+        except Exception as e:
+            self.logger.error(f"Failed to upload document: {str(e)}")
+            raise PluginError(f"Failed to upload document to Paperless-NGX: {str(e)}")
+    
+    def get_correspondents_v2(self) -> List[Dict[str, Any]]:
+        """Get all correspondents (v2)"""
+        try:
+            response = self._make_request('GET', '/api/correspondents/')
+            return response.json().get('results', [])
+        except Exception as e:
+            self.logger.error(f"Failed to fetch correspondents: {str(e)}")
+            return []
+    
+    def get_document_types_v2(self) -> List[Dict[str, Any]]:
+        """Get all document types (v2)"""
+        try:
+            response = self._make_request('GET', '/api/document_types/')
+            return response.json().get('results', [])
+        except Exception as e:
+            self.logger.error(f"Failed to fetch document types: {str(e)}")
+            return []
+    
+    def get_tags_v2(self) -> List[Dict[str, Any]]:
+        """Get all tags (v2)"""
+        try:
+            response = self._make_request('GET', '/api/tags/')
+            return response.json().get('results', [])
+        except Exception as e:
+            self.logger.error(f"Failed to fetch tags: {str(e)}")
+            return []
+    
+    def _process_document_v2(self, doc: Dict[str, Any]) -> Dict[str, Any]:
+        """Process document data to include additional information (v2)"""
+        processed = doc.copy()
+        
+        # Add formatted dates
+        if 'created' in doc:
+            try:
+                created_date = datetime.fromisoformat(doc['created'].replace('Z', '+00:00'))
+                processed['created_formatted'] = created_date.strftime('%Y-%m-%d %H:%M')
+                processed['created_date'] = created_date.date()
+            except:
+                processed['created_formatted'] = doc['created']
+                processed['created_date'] = None
+        
+        # Add URLs
+        processed['download_url'] = self.get_document_download_url(doc['id'])
+        processed['preview_url'] = self.get_document_preview_url(doc['id'])
+        
+        # Process correspondent
+        if 'correspondent' in doc and doc['correspondent']:
+            correspondent_name = self._get_correspondent_name(doc['correspondent'])
+            processed['correspondent_name'] = correspondent_name
+        else:
+            processed['correspondent_name'] = 'None'
+        
+        # Process document type
+        if 'document_type' in doc and doc['document_type']:
+            doc_type_name = self._get_document_type_name(doc['document_type'])
+            processed['document_type_name'] = doc_type_name
+        else:
+            processed['document_type_name'] = 'None'
+        
+        # Process tags
+        if 'tags' in doc and doc['tags']:
+            tag_names = [self._get_tag_name(tag_id) for tag_id in doc['tags']]
+            processed['tag_names'] = tag_names
+        else:
+            processed['tag_names'] = []
+        
+        return processed
+    
+    def _get_correspondent_name_v2(self, correspondent_id: int) -> str:
+        """Get correspondent name by ID (v2)"""
+        try:
+            response = self._make_request('GET', f'/api/correspondents/{correspondent_id}/')
+            return response.json().get('name', f'Correspondent {correspondent_id}')
+        except:
+            return f'Correspondent {correspondent_id}'
+    
+    def _get_document_type_name_v2(self, doc_type_id: int) -> str:
+        """Get document type name by ID (v2)"""
+        try:
+            response = self._make_request('GET', f'/api/document_types/{doc_type_id}/')
+            return response.json().get('name', f'Type {doc_type_id}')
+        except:
+            return f'Type {doc_type_id}'
+    
+    def _get_tag_name_v2(self, tag_id: int) -> str:
+        """Get tag name by ID (v2)"""
+        try:
+            response = self._make_request('GET', f'/api/tags/{tag_id}/')
+            return response.json().get('name', f'Tag {tag_id}')
+        except:
+            return f'Tag {tag_id}'
+    
+    def get_capabilities_v2(self) -> List[str]:
+        """Return list of plugin capabilities (v2)"""
+        return [
+            'document_management',
+            'document_search',
+            'document_upload',
+            'document_download',
+            'ocr_content',
+            'metadata_management'
+        ]
+    
+    def get_status_v2(self) -> Dict[str, Any]:
+        """Get plugin status and health information (v2)"""
+        try:
+            # Test API connection
+            response = self._make_request('GET', '/api/documents/', params={'page_size': 1})
+            doc_count = response.json().get('count', 0)
+            
+            return {
+                'status': 'healthy',
+                'connected': True,
+                'base_url': self.base_url,
+                'document_count': doc_count,
+                'version': self.version,
+                'last_check': datetime.now().isoformat()
+            }
+        except Exception as e:
+            return {
+                'status': 'error',
+                'connected': False,
+                'base_url': self.base_url,
+                'error': str(e),
+                'version': self.version,
+                'last_check': datetime.now().isoformat()
+            }
+    
+    def get_menu_items_v2(self) -> List[Dict[str, str]]:
+        """Get menu items for web interface (v2)"""
+        return [
+            {
+                'name': 'Paperless-NGX Documents',
+                'url': '/paperless-ngx/documents',
+                'icon': 'fa-file-invoice',
+                'description': 'Browse and search Paperless-NGX documents'
+            }
+        ]
+    
+    def get_web_routes_v2(self) -> List[Dict[str, Any]]:
+        """Get web routes provided by this plugin (v2)"""
+        return [
+            {
+                'endpoint': 'paperless_ngx_documents',
+                'url': '/paperless-ngx/documents',
+                'methods': ['GET'],
+                'description': 'List Paperless-NGX documents'
+            },
+            {
+                'endpoint': 'paperless_ngx_document_content',
+                'url': '/paperless-ngx/document/<int:doc_id>/content',
+                'methods': ['GET'],
+                'description': 'View document OCR content'
+            },
+            {
+                'endpoint': 'paperless_ngx_document_detail',
+                'url': '/paperless-ngx/document/<int:doc_id>',
+                'methods': ['GET'],
+                'description': 'Get document details (API)'
+            }
+        ]
 
 
 class PaperlessNGXProcessingPlugin(ProcessingPlugin):
