@@ -108,7 +108,8 @@ class PaperlessNGXPlugin(BasePlugin):
         except Exception as e:
             self.logger.error("Error during Paperless-NGX plugin cleanup: {error}", error=str(e))
             return False
-     def test_connection(self) -> bool:
+    
+    def test_connection(self) -> bool:
         """Test connection to Paperless-NGX API"""
         try:
             if not self.session or not self.base_url or not self.api_key:
