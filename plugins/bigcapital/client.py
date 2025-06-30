@@ -2,7 +2,7 @@
 BigCapital API Client
 """
 import requests
-import logging
+from loguru import logger
 from typing import Dict, Any, List, Optional
 
 
@@ -18,7 +18,6 @@ class BigCapitalClient:
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         })
-        self.logger = logging.getLogger(__name__)
     
     def _make_request(self, method: str, endpoint: str, **kwargs) -> Optional[Dict[str, Any]]:
         """Make HTTP request to BigCapital API"""
@@ -28,7 +27,7 @@ class BigCapitalClient:
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
-            self.logger.error(f"BigCapital API request failed: {e}")
+            logger.error(f"BigCapital API request failed: {e}")
             return None
     
     def get_organization_info(self) -> Optional[Dict[str, Any]]:

@@ -4,7 +4,7 @@ Base Plugin Architecture for Business Plugin Middleware
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List, Optional
 from flask import Blueprint
-import logging
+from loguru import logger
 
 
 class BasePlugin(ABC):
@@ -14,7 +14,6 @@ class BasePlugin(ABC):
         self.name = name
         self.version = version
         self.enabled = True
-        self.logger = logging.getLogger(f"plugin.{name}")
         self._config = {}
         self._dependencies = []
     

@@ -5,12 +5,13 @@ from loguru import logger
 from typing import Dict, Any, List
 from flask import Blueprint, jsonify, request, render_template_string
 
-from core.base_plugin import IntegrationPlugin, WebPlugin
+from core.base_plugin import IntegrationPlugin
 from core.exceptions import IntegrationError
 from .client import InvoiceNinjaClient
 
 
-class InvoiceNinjaPlugin(IntegrationPlugin, WebPlugin):
+class InvoiceNinjaPlugin(IntegrationPlugin):
+    """Invoice Ninja integration plugin with web interface"""
     """Invoice Ninja integration plugin with web interface"""
     
     def __init__(self, name: str, version: str = "1.0.0"):
