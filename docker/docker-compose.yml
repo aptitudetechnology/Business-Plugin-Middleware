@@ -4,7 +4,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    container_name: simplified-paperless-bigcapital-middleware
+    container_name: Business-Plugin-Middleware
     ports:
       - "5000:5000"
     volumes:
