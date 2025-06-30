@@ -17,18 +17,26 @@ env:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-        
+
       - name: Build Docker Image
+        # Build the Docker image using the Dockerfile in the 'docker' directory.
+        # The context is the current directory ('.').
         run: docker build -t ${{ env.DOCKER_IMAGE_NAME }} -f docker/Dockerfile .
-        
-      - name: Run Tests in Docker Container
+
+      - name: Run Unit Tests in Docker Container
+        # Runs unit tests inside the newly built Docker container.
+        # - --rm: Automatically remove the container when it exits.
+        # - --entrypoint /bin/bash: Overrides the default entrypoint to run bash commands.
+        # - -v ${{ github.workspace }}:/app: Mounts the GitHub workspace into the container at /app.
+        # - -w /app: Sets the working directory inside the container to /app.
+        # - -c "..." : Executes the given command string.
         run: |
           docker run --rm \
             --entrypoint /bin/bash \
@@ -36,8 +44,9 @@ jobs:
             -w /app \
             ${{ env.DOCKER_IMAGE_NAME }} \
             -c "pip install pytest && pytest tests/ -v"
-            
-      - name: Test Plugin System
+
+      - name: Test Plugin System Basic Import
+        # Verifies that the core plugin system can be imported without errors.
         run: |
           docker run --rm \
             --entrypoint /bin/bash \
@@ -45,15 +54,19 @@ jobs:
             -w /app \
             ${{ env.DOCKER_IMAGE_NAME }} \
             -c "python -c 'from core.plugin_manager import PluginManager; print(\"Plugin system test passed\")'"
-            
+
       - name: Log in to Docker Hub
+        # Only logs in if the event is a 'push' to 'main' or 'develop' branches.
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-          
+
       - name: Generate Docker Tags
+        # Generates appropriate Docker tags based on the branch.
+        # 'main' branch gets 'latest' and SHA.
+        # 'develop' branch gets 'develop' and 'develop-SHA'.
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
         id: meta
         run: |
@@ -62,8 +75,9 @@ jobs:
           else
             echo "tags=${{ env.DOCKER_HUB_REPO }}:develop,${{ env.DOCKER_HUB_REPO }}:develop-${{ github.sha }}" >> $GITHUB_OUTPUT
           fi
-          
+
       - name: Tag and Push Docker Image to Docker Hub
+        # Tags the built Docker image and pushes it to Docker Hub.
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
         run: |
           IFS=',' read -ra TAGS <<< "${{ steps.meta.outputs.tags }}"
@@ -72,42 +86,44 @@ jobs:
             docker push $tag
             echo "Pushed: $tag"
           done
-          
+
   plugin-validation:
     runs-on: ubuntu-latest
-    needs: build-and-test
-    
+    needs: build-and-test # This job depends on 'build-and-test' completing successfully.
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-          
+
       - name: Install dependencies
+        # Installs Python dependencies from requirements.txt.
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          
+
       - name: Validate Plugin Structure
+        # Python script to check for the 'plugins' directory and '__init__.py' files.
         run: |
           python -c "
           import os
           import sys
           sys.path.insert(0, '.')
-          
+
           # Check if plugins directory exists
           plugins_dir = 'plugins'
           if os.path.exists(plugins_dir):
               print(f'✓ Plugins directory found: {plugins_dir}')
-              
+
               # List available plugins
-              plugins = [d for d in os.listdir(plugins_dir) 
-                        if os.path.isdir(os.path.join(plugins_dir, d)) and not d.startswith('.')]
+              plugins = [d for d in os.listdir(plugins_dir)
+                         if os.path.isdir(os.path.join(plugins_dir, d)) and not d.startswith('.')]
               print(f'✓ Found {len(plugins)} plugin directories: {plugins}')
-              
+
               # Validate each plugin has required files
               for plugin in plugins:
                   plugin_path = os.path.join(plugins_dir, plugin)
@@ -119,27 +135,32 @@ jobs:
                       sys.exit(1)
           else:
               print('ℹ No plugins directory found - this is okay for base installation')
-          
+
           print('✓ Plugin validation completed')
           "
-          
+
   security-scan:
     runs-on: ubuntu-latest
-    needs: build-and-test
-    
+    needs: build-and-test # This job depends on 'build-and-test' completing successfully.
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Run Security Scan with Trivy
+        # Runs Trivy scan on the Docker image built in the previous job.
+        # Outputs results in SARIF format to 'trivy-results.sarif'.
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.DOCKER_IMAGE_NAME }}
           format: 'sarif'
           output: 'trivy-results.sarif'
-          
+
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v2
+        # Uploads the SARIF file generated by Trivy to the GitHub Security tab.
+        # The 'if: always()' ensures this step runs even if previous steps fail,
+        # so you always get security scan results.
+        uses: github/codeql-action/upload-sarif@v3 # <--- UPDATED TO V3
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
