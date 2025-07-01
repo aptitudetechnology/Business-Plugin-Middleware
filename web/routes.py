@@ -893,4 +893,58 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             logger.error(f"Connection test error: {e}")
             return jsonify({'error': str(e)}), 500
     
+    @api.route('/plugins/<plugin_name>/retry', methods=['POST'])
+    def retry_failed_plugin(plugin_name):
+        """Retry a specific failed plugin"""
+        try:
+            if not plugin_manager:
+                return jsonify({'error': 'Plugin manager not available'}), 500
+            
+            app_context = {
+                'config': config,
+                'db_manager': db_manager,
+                'doc_processor': doc_processor
+            }
+            
+            success = plugin_manager.retry_failed_plugin(plugin_name, app_context)
+            
+            if success:
+                return jsonify({'success': True, 'message': f'Plugin {plugin_name} retried successfully'})
+            else:
+                return jsonify({'success': False, 'error': f'Failed to retry plugin {plugin_name}'}), 500
+            
+        except Exception as e:
+            logger.error(f"Plugin retry error: {e}")
+            return jsonify({'error': str(e)}), 500
+
+    @api.route('/plugins/retry-all-failed', methods=['POST'])
+    def retry_all_failed_plugins():
+        """Retry all failed plugins"""
+        try:
+            if not plugin_manager:
+                return jsonify({'error': 'Plugin manager not available'}), 500
+            
+            app_context = {
+                'config': config,
+                'db_manager': db_manager,
+                'doc_processor': doc_processor
+            }
+            
+            results = plugin_manager.retry_all_failed_plugins(app_context)
+            
+            success_count = sum(1 for success in results.values() if success)
+            total_count = len(results)
+            
+            return jsonify({
+                'success': True,
+                'message': f'Retried {success_count} out of {total_count} failed plugins',
+                'results': results,
+                'success_count': success_count,
+                'total_count': total_count
+            })
+            
+        except Exception as e:
+            logger.error(f"Plugin retry all error: {e}")
+            return jsonify({'error': str(e)}), 500
+    
     return api
