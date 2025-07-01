@@ -1,27 +1,155 @@
+# Business Plugin Middleware - Makefile
+# Updated for new plugin-based architecture
+
+# Variables
+IMAGE_NAME = business-plugin-middleware
+CONTAINER_NAME = business-plugin-middleware
+COMPOSE_FILE = docker-compose.yml
+
+# Default target
+.PHONY: help
+help:
+	@echo "Business Plugin Middleware - Available Commands:"
+	@echo ""
+	@echo "🚀 Quick Start:"
+	@echo "  make up          - Build and start all services (recommended)"
+	@echo "  make down        - Stop all services"
+	@echo "  make restart     - Restart all services"
+	@echo ""
+	@echo "🔧 Development:"
+	@echo "  make build       - Build the middleware image"
+	@echo "  make rebuild     - Force rebuild without cache"
+	@echo "  make logs        - Follow logs from all services"
+	@echo "  make logs-middleware - Follow only middleware logs"
+	@echo ""
+	@echo "🧹 Maintenance:"
+	@echo "  make clean       - Stop and remove containers"
+	@echo "  make clean-all   - Clean everything including volumes"
+	@echo "  make shell       - Access middleware container shell"
+	@echo ""
+	@echo "🔍 Debugging:"
+	@echo "  make status      - Show service status"
+	@echo "  make config      - Show current configuration"
+	@echo "  make test-plugins - Test plugin connectivity"
+
+# Main targets
+.PHONY: up
+up:
+	@echo "🚀 Building and starting all services..."
+	docker-compose -f $(COMPOSE_FILE) up --build -d
+	@echo "✅ Services started!"
+	@echo "🌐 Middleware: http://localhost:5000"
+	@echo "📄 Paperless-NGX: http://localhost:8000"
+
+.PHONY: down
+down:
+	@echo "🛑 Stopping all services..."
+	docker-compose -f $(COMPOSE_FILE) down
+	@echo "✅ All services stopped"
+
+.PHONY: restart
+restart:
+	@echo "🔄 Restarting all services..."
+	docker-compose -f $(COMPOSE_FILE) restart
+	@echo "✅ All services restarted"
+
+.PHONY: restart-middleware
+restart-middleware:
+	@echo "🔄 Restarting middleware only..."
+	docker-compose -f $(COMPOSE_FILE) restart middleware
+	@echo "✅ Middleware restarted"
+
+# Build targets
+.PHONY: build
 build:
-	docker build -t caston81/simplified-paperless-bigcapital-middleware:latest -f docker/Dockerfile .
+	@echo "🔨 Building middleware image..."
+	docker-compose -f $(COMPOSE_FILE) build middleware
 
-run: build
-	docker run --name simplified-paperless-middleware --rm -p 5000:5000 caston81/simplified-paperless-bigcapital-middleware:latest
+.PHONY: rebuild
+rebuild:
+	@echo "🔨 Force rebuilding all images..."
+	docker-compose -f $(COMPOSE_FILE) build --no-cache
+	docker-compose -f $(COMPOSE_FILE) up -d
 
-run-d: build
-	docker run -d --name simplified-paperless-middleware -p 5000:5000 caston81/simplified-paperless-bigcapital-middleware:latest
+# Logging targets
+.PHONY: logs
+logs:
+	@echo "📋 Following logs from all services (Ctrl+C to exit)..."
+	docker-compose -f $(COMPOSE_FILE) logs -f
 
-debug:
-	docker run -it --rm --name simplified-paperless-middleware-debug caston81/simplified-paperless-bigcapital-middleware:latest bash
+.PHONY: logs-middleware
+logs-middleware:
+	@echo "📋 Following middleware logs (Ctrl+C to exit)..."
+	docker-compose -f $(COMPOSE_FILE) logs -f middleware
 
+.PHONY: logs-paperless
+logs-paperless:
+	@echo "📋 Following Paperless-NGX logs (Ctrl+C to exit)..."
+	docker-compose -f $(COMPOSE_FILE) logs -f paperless-ngx
+
+# Maintenance targets
+.PHONY: clean
 clean:
-	docker stop simplified-paperless-middleware || true
-	docker rm simplified-paperless-middleware || true
-	docker rmi caston81/simplified-paperless-bigcapital-middleware:latest || true
+	@echo "🧹 Cleaning up containers..."
+	docker-compose -f $(COMPOSE_FILE) down --remove-orphans
+	@echo "✅ Containers cleaned"
 
-# --- Docker Compose related targets ---
+.PHONY: clean-all
+clean-all:
+	@echo "🧹 Cleaning everything (containers, volumes, images)..."
+	docker-compose -f $(COMPOSE_FILE) down --remove-orphans --volumes
+	docker image prune -f
+	@echo "✅ Everything cleaned"
 
-compose-up: build
-	docker-compose -f docker/docker-compose.yml up -d
+# Development and debugging targets
+.PHONY: shell
+shell:
+	@echo "🐚 Accessing middleware container shell..."
+	docker-compose -f $(COMPOSE_FILE) exec middleware bash
 
-compose-down:
-	docker-compose -f docker/docker-compose.yml down
+.PHONY: status
+status:
+	@echo "📊 Service status:"
+	docker-compose -f $(COMPOSE_FILE) ps
 
-compose-logs:
-	docker-compose -f docker/docker-compose.yml logs -f
+.PHONY: config
+config:
+	@echo "⚙️ Current configuration:"
+	@echo "--- config.ini ---"
+	@cat config/config.ini 2>/dev/null || echo "config.ini not found"
+	@echo ""
+	@echo "--- plugins.json ---"
+	@cat config/plugins.json 2>/dev/null || echo "plugins.json not found"
+
+.PHONY: test-plugins
+test-plugins:
+	@echo "🔌 Testing plugin connectivity..."
+	docker-compose -f $(COMPOSE_FILE) exec middleware python -c "
+import sys; sys.path.append('/app')
+from core.plugin_manager import PluginManager
+from config.settings import load_config
+config = load_config()
+pm = PluginManager(config)
+print('Discovered plugins:', pm.discover_plugins())
+" || echo "❌ Failed to test plugins"
+
+# Setup and initialization
+.PHONY: init
+init:
+	@echo "🚀 Initializing Business Plugin Middleware..."
+	@echo "📁 Creating necessary directories..."
+	@mkdir -p data logs uploads config
+	@echo "🔧 Setting up configuration files..."
+	@test -f config/config.ini || cp config/config.ini.example config/config.ini 2>/dev/null || echo "No example config found"
+	@echo "🐳 Building and starting services..."
+	@make up
+	@echo ""
+	@echo "✅ Initialization complete!"
+	@echo "🌐 Access the web interface at: http://localhost:5000"
+	@echo "📖 Check README.md for configuration instructions"
+
+# Shortcuts for common operations
+.PHONY: start stop restart-mid
+start: up
+stop: down
+restart-mid: restart-middleware
