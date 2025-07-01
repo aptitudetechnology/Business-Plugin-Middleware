@@ -330,3 +330,37 @@ class PluginManager:
                 results[plugin_name] = False
         
         return results
+    
+    def retry_failed_plugin(self, plugin_name: str, app_context: Dict[str, Any]) -> bool:
+        """Retry a failed plugin by removing it from failed list and attempting to load it again"""
+        # Remove from failed plugins list if it exists
+        if plugin_name in self._failed_plugins:
+            self._failed_plugins.remove(plugin_name)
+            logger.info(f"Removed {plugin_name} from failed plugins list, attempting to retry...")
+        
+        # Use the standard reload_plugin method which handles both existing and new plugins
+        success = self.reload_plugin(plugin_name, app_context)
+        
+        if not success:
+            # Add back to failed list if it fails again
+            if plugin_name not in self._failed_plugins:
+                self._failed_plugins.append(plugin_name)
+                logger.warning(f"Plugin {plugin_name} failed again, added back to failed list")
+        
+        return success
+
+    def retry_all_failed_plugins(self, app_context: Dict[str, Any]) -> Dict[str, bool]:
+        """Retry all failed plugins"""
+        results = {}
+        failed_plugins_copy = self._failed_plugins.copy()  # Make a copy to avoid modification during iteration
+        
+        for plugin_name in failed_plugins_copy:
+            try:
+                logger.info(f"Retrying failed plugin: {plugin_name}")
+                success = self.retry_failed_plugin(plugin_name, app_context)
+                results[plugin_name] = success
+            except Exception as e:
+                logger.error(f"Failed to retry plugin {plugin_name}: {e}")
+                results[plugin_name] = False
+        
+        return results

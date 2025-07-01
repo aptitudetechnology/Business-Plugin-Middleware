@@ -81,11 +81,17 @@
                                     </td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
-                                            <button class="btn btn-outline-primary" onclick="reloadPlugin('{{ name }}')">
-                                                <i class="fas fa-sync-alt"></i>
-                                            </button>
-                                            <button class="btn btn-outline-info" onclick="showPluginConfig('{{ name }}')">
-                                                <i class="fas fa-cog"></i>
+                                            {% if plugin.enabled %}
+                                                <button class="btn btn-outline-primary" onclick="reloadPlugin('{{ name }}')" title="Reload plugin">
+                                                    <i class="fas fa-sync-alt"></i> Reload
+                                                </button>
+                                            {% else %}
+                                                <button class="btn btn-outline-success" onclick="retryPlugin('{{ name }}')" title="Retry failed plugin">
+                                                    <i class="fas fa-redo"></i> Retry
+                                                </button>
+                                            {% endif %}
+                                            <button class="btn btn-outline-info" onclick="showPluginConfig('{{ name }}')" title="Configure plugin">
+                                                <i class="fas fa-cog"></i> Configure
                                             </button>
                                         </div>
                                     </td>
@@ -110,22 +116,53 @@
     <div class="col-12">
         <div class="card border-danger">
             <div class="card-header bg-danger text-white">
-                <h5><i class="fas fa-exclamation-triangle"></i> Failed Plugins</h5>
+                <h5><i class="fas fa-exclamation-triangle"></i> Failed Plugins ({{ plugin_info.failed_plugins|length }})</h5>
             </div>
             <div class="card-body">
                 <div class="alert alert-danger">
                     <strong>The following plugins failed to load:</strong>
-                    <ul class="mb-0 mt-2">
-                        {% for plugin in plugin_info.failed_plugins %}
-                        <li>{{ plugin }}</li>
-                        {% endfor %}
-                    </ul>
                 </div>
-                <p class="mb-0">
+                
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Plugin Name</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for plugin in plugin_info.failed_plugins %}
+                            <tr>
+                                <td>
+                                    <strong>{{ plugin }}</strong>
+                                    <br>
+                                    <small class="text-muted">Failed to initialize</small>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-success" onclick="retryPlugin('{{ plugin }}')" title="Retry loading this plugin">
+                                            <i class="fas fa-redo"></i> Retry
+                                        </button>
+                                        <button class="btn btn-outline-info" onclick="showPluginConfig('{{ plugin }}')" title="Configure plugin">
+                                            <i class="fas fa-cog"></i> Configure
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-3">
+                    <button class="btn btn-warning btn-sm me-2" onclick="retryAllFailedPlugins()">
+                        <i class="fas fa-sync-alt"></i> Retry All Failed Plugins
+                    </button>
                     <small class="text-muted">
                         Check the logs for detailed error information and ensure all plugin dependencies are installed.
                     </small>
-                </p>
+                </div>
             </div>
         </div>
     </div>
@@ -334,6 +371,111 @@ function showAlert(type, message) {
             }
         }
     }, 5000);
+}
+
+// Retry a specific failed plugin
+function retryPlugin(pluginName) {
+    const confirmMessage = `Are you sure you want to retry loading the plugin "${pluginName}"?\n\nThis will attempt to reload and reinitialize the plugin with current configuration.`;
+    
+    if (confirm(confirmMessage)) {
+        // Show loading feedback
+        const retryButton = event.target.closest('button');
+        const originalHtml = retryButton.innerHTML;
+        retryButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Retrying...';
+        retryButton.disabled = true;
+        
+        fetch('/api/plugins/' + pluginName + '/reload', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('success', `Plugin "${pluginName}" reloaded successfully! The page will refresh in 2 seconds.`);
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                showAlert('danger', `Failed to retry plugin "${pluginName}": ${data.error}`);
+                // Restore button state
+                retryButton.innerHTML = originalHtml;
+                retryButton.disabled = false;
+            }
+        })
+        .catch(error => {
+            showAlert('danger', `Error retrying plugin "${pluginName}": ${error}`);
+            // Restore button state
+            retryButton.innerHTML = originalHtml;
+            retryButton.disabled = false;
+        });
+    }
+}
+
+// Retry all failed plugins
+function retryAllFailedPlugins() {
+    if (confirm('Are you sure you want to retry loading all failed plugins?\n\nThis will attempt to reload and reinitialize all failed plugins with current configuration.')) {
+        // Show loading feedback
+        const retryAllButton = event.target.closest('button');
+        const originalHtml = retryAllButton.innerHTML;
+        retryAllButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Retrying All...';
+        retryAllButton.disabled = true;
+        
+        // Get all failed plugin names from the page
+        const failedPluginRows = document.querySelectorAll('.table tbody tr');
+        const failedPlugins = [];
+        
+        failedPluginRows.forEach(row => {
+            const pluginName = row.querySelector('strong').textContent.trim();
+            failedPlugins.push(pluginName);
+        });
+        
+        let completedCount = 0;
+        let successCount = 0;
+        const totalCount = failedPlugins.length;
+        
+        // Function to handle completion of all retries
+        const handleCompletion = () => {
+            if (successCount > 0) {
+                showAlert('success', `Successfully retried ${successCount} out of ${totalCount} plugins. The page will refresh in 3 seconds.`);
+                setTimeout(() => location.reload(), 3000);
+            } else {
+                showAlert('warning', `No plugins were successfully retried. Check the logs for detailed error information.`);
+                // Restore button state
+                retryAllButton.innerHTML = originalHtml;
+                retryAllButton.disabled = false;
+            }
+        };
+        
+        // Retry each plugin
+        failedPlugins.forEach(pluginName => {
+            fetch('/api/plugins/' + pluginName + '/reload', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    successCount++;
+                }
+                completedCount++;
+                
+                // Check if all retries are complete
+                if (completedCount === totalCount) {
+                    handleCompletion();
+                }
+            })
+            .catch(error => {
+                completedCount++;
+                
+                // Check if all retries are complete
+                if (completedCount === totalCount) {
+                    handleCompletion();
+                }
+            });
+        });
+    }
 }
 </script>
 {% endblock %}
