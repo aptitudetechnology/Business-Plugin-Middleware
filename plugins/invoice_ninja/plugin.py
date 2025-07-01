@@ -7,7 +7,7 @@ from flask import Blueprint, jsonify, request, render_template_string
 
 from core.base_plugin import IntegrationPlugin
 from core.exceptions import IntegrationError
-# from .client import InvoiceNinjaClient
+from .client import InvoiceNinjaClient
 
 
 class InvoiceNinjaPlugin(IntegrationPlugin):

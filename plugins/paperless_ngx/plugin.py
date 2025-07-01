@@ -83,8 +83,13 @@ class PaperlessNGXPlugin(BasePlugin):
             if (not self.base_url or 
                 not self.api_key or 
                 self.base_url in ['http://localhost:8000', 'http://your-paperless-ngx-server:8000', 'https://your-paperless-instance.com', 'http://paperless-ngx:8000/api/', 'http://paperless-ngx:8000/api'] or
-                self.api_key in ['your_api_token_here', 'your-paperless-ngx-token', 'your-paperless-api-key', 'YOUR_GENERATED_API_TOKEN']):
-                self.logger.info("Paperless-NGX plugin initialized with placeholder configuration (connection not tested)")
+                self.api_key in ['your_api_token_here', 'your-paperless-ngx-token', 'your-paperless-api-key', 'YOUR_GENERATED_API_TOKEN', 'YOUR_REAL_API_TOKEN_HERE', 'PLACEHOLDER_TOKEN_REPLACE_ME']):
+                self.logger.warning("Paperless-NGX plugin initialized with placeholder configuration")
+                self.logger.info("To enable Paperless-NGX integration:")
+                self.logger.info("1. Access Paperless-NGX at http://localhost:8000")
+                self.logger.info("2. Create an API token in Settings > API Tokens")
+                self.logger.info("3. Update config/plugins.json or config/config.ini with your real token")
+                self.logger.info("4. Restart the middleware")
                 return True
             
             # Test the connection for real configurations
@@ -96,7 +101,7 @@ class PaperlessNGXPlugin(BasePlugin):
             # Still return True for placeholder configurations to allow startup
             if hasattr(self, 'base_url') and hasattr(self, 'api_key'):
                 if (self.base_url in ['http://localhost:8000', 'http://your-paperless-ngx-server:8000', 'https://your-paperless-instance.com', 'http://paperless-ngx:8000/api/', 'http://paperless-ngx:8000/api'] or
-                    self.api_key in ['your_api_token_here', 'your-paperless-ngx-token', 'your-paperless-api-key', 'YOUR_GENERATED_API_TOKEN']):
+                    self.api_key in ['your_api_token_here', 'your-paperless-ngx-token', 'your-paperless-api-key', 'YOUR_GENERATED_API_TOKEN', 'YOUR_REAL_API_TOKEN_HERE', 'PLACEHOLDER_TOKEN_REPLACE_ME']):
                     self.logger.info("Continuing initialization despite connection error (placeholder config)")
                     return True
             return False

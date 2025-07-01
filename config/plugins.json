@@ -21,7 +21,7 @@
   },
   "paperless_ngx": {
     "enabled": true,
-    "api_key": "PUT_YOUR_REAL_API_TOKEN_HERE",
+    "api_key": "YOUR_REAL_API_TOKEN_HERE",
     "base_url": "http://paperless-ngx:8000",
     "timeout": 30,
     "auto_refresh": true,

@@ -50,6 +50,59 @@ services:
       timeout: 10s
       retries: 3
 
+  # Paperless-NGX document management system
+  paperless-ngx:
+    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    container_name: paperless-ngx
+    ports:
+      - "8000:8000"
+    environment:
+      PAPERLESS_URL: http://localhost:8000
+      PAPERLESS_SECRET_KEY: ${PAPERLESS_SECRET_KEY:-change-me-in-production}
+      PAPERLESS_TIME_ZONE: ${PAPERLESS_TIMEZONE:-UTC}
+      PAPERLESS_OCR_LANGUAGE: eng
+      PAPERLESS_REDIS: redis://redis:6379
+      PAPERLESS_DBHOST: paperless-db
+      PAPERLESS_DBNAME: paperless
+      PAPERLESS_DBUSER: paperless
+      PAPERLESS_DBPASS: paperless
+    volumes:
+      - paperless_data:/usr/src/paperless/data
+      - paperless_media:/usr/src/paperless/media
+      - paperless_export:/usr/src/paperless/export
+      - paperless_consume:/usr/src/paperless/consume
+    depends_on:
+      - redis
+      - paperless-db
+    networks:
+      - middleware-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # PostgreSQL for Paperless-NGX
+  paperless-db:
+    image: postgres:15-alpine
+    container_name: paperless-db
+    environment:
+      POSTGRES_DB: paperless
+      POSTGRES_USER: paperless
+      POSTGRES_PASSWORD: paperless
+    volumes:
+      - paperless_db_data:/var/lib/postgresql/data
+    networks:
+      - middleware-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U paperless"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   # PostgreSQL database (alternative to SQLite for production)
   # Uncomment if you want to use PostgreSQL instead of SQLite
   # postgres:
@@ -92,4 +145,9 @@ networks:
 
 volumes:
   redis_data:
+  paperless_data:
+  paperless_media:
+  paperless_export:
+  paperless_consume:
+  paperless_db_data:
   # postgres_data:  # Uncomment if using PostgreSQL
