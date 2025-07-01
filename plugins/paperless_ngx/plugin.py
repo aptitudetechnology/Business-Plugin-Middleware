@@ -51,6 +51,9 @@ class PaperlessNGXPlugin(BasePlugin):
                 if not paperless_config:
                     paperless_config = config_manager.get_section('paperless')
                 
+                # DEBUG: Log what configuration we're loading
+                self.logger.info(f"Loaded paperless config: {paperless_config}")
+                
                 # Map config keys from old format to new format
                 if paperless_config:
                     self.config = {
@@ -68,6 +71,10 @@ class PaperlessNGXPlugin(BasePlugin):
             self.timeout = config.get('timeout', 30)
             self.page_size = config.get('page_size', 25)
             self.verify_ssl = config.get('verify_ssl', True)
+            
+            # DEBUG: Log the final configuration being used
+            self.logger.info(f"Final base_url: {self.base_url}")
+            self.logger.info(f"Final api_key: {self.api_key[:10]}..." if self.api_key else "No API key")
             
             # Always setup API client (even for placeholder configs)
             self._initialize_client()
