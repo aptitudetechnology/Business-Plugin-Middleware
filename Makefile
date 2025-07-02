@@ -12,13 +12,15 @@ help:
 	@echo "Business Plugin Middleware - Available Commands:"
 	@echo ""
 	@echo "🚀 Quick Start:"
-	@echo "  make up          - Build and start all services (recommended)"
+	@echo "  make up          - Build and start all services (uses cache)"
 	@echo "  make down        - Stop all services"
 	@echo "  make restart     - Restart all services"
+	@echo "  make rebuild     - Force rebuild and start (no cache - use after code changes)"
 	@echo ""
 	@echo "🔧 Development:"
-	@echo "  make build       - Build the middleware image"
-	@echo "  make rebuild     - Force rebuild without cache"
+	@echo "  make build       - Build the middleware image (uses cache)"
+	@echo "  make rebuild     - Force rebuild without cache (recommended after code changes)"
+	@echo "  make fresh       - Stop, rebuild everything from scratch, and start"
 	@echo "  make logs        - Follow logs from all services"
 	@echo "  make logs-middleware - Follow only middleware logs"
 	@echo ""
@@ -62,14 +64,23 @@ restart-middleware:
 # Build targets
 .PHONY: build
 build:
-	@echo "🔨 Building middleware image..."
+	@echo "🔨 Building middleware image (using cache)..."
 	docker-compose -f $(COMPOSE_FILE) build middleware
 
 .PHONY: rebuild
 rebuild:
-	@echo "🔨 Force rebuilding all images..."
+	@echo "🔨 Force rebuilding all images (no cache)..."
 	docker-compose -f $(COMPOSE_FILE) build --no-cache
 	docker-compose -f $(COMPOSE_FILE) up -d
+
+.PHONY: fresh
+fresh:
+	@echo "🧹 Stopping containers and rebuilding from scratch..."
+	docker-compose -f $(COMPOSE_FILE) down
+	docker-compose -f $(COMPOSE_FILE) build --no-cache --pull
+	docker-compose -f $(COMPOSE_FILE) up -d
+	@echo "✅ Fresh build complete!"
+	@echo "🌐 Middleware: http://localhost:5000"
 
 # Logging targets
 .PHONY: logs
