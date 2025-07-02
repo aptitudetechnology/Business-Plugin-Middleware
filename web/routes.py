@@ -1102,4 +1102,80 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             logger.error(f"Failed to get raw OCR content for document {doc_id}: {e}")
             return jsonify({'error': str(e)}), 500
 
+    @api.route('/plugins/<plugin_name>/reload-config', methods=['POST'])
+    def reload_plugin_config(plugin_name):
+        """Reload configuration for a specific plugin"""
+        try:
+            if not plugin_manager:
+                return jsonify({'error': 'Plugin manager not available'}), 500
+            
+            # Get the plugin
+            plugin = plugin_manager.get_plugin(plugin_name)
+            if not plugin:
+                return jsonify({'error': f'Plugin {plugin_name} not found'}), 404
+            
+            # Reload the plugin configuration
+            app_context = {
+                'config': config,
+                'db_manager': db_manager,
+                'doc_processor': doc_processor
+            }
+            
+            # Re-initialize the plugin to pick up new config
+            success = plugin.initialize(app_context)
+            
+            return jsonify({
+                'success': success,
+                'message': f'Plugin {plugin_name} configuration reloaded',
+                'plugin_status': {
+                    'name': plugin.name,
+                    'version': plugin.version,
+                    'base_url': getattr(plugin, 'base_url', None),
+                    'hostname_url': getattr(plugin, 'hostname_url', None)
+                }
+            })
+            
+        except Exception as e:
+            logger.error(f"Failed to reload plugin config for {plugin_name}: {e}")
+            return jsonify({'error': str(e)}), 500
+
+    @api.route('/plugins/<plugin_name>/debug', methods=['GET'])
+    def get_plugin_debug_info(plugin_name):
+        """Get debug information for a specific plugin"""
+        try:
+            if not plugin_manager:
+                return jsonify({'error': 'Plugin manager not available'}), 500
+            
+            # Get the plugin
+            plugin = plugin_manager.get_plugin(plugin_name)
+            if not plugin:
+                return jsonify({'error': f'Plugin {plugin_name} not found'}), 404
+            
+            # Get debug info
+            debug_info = {
+                'name': plugin.name,
+                'version': plugin.version,
+                'config': getattr(plugin, 'config', {}),
+                'base_url': getattr(plugin, 'base_url', None),
+                'hostname_url': getattr(plugin, 'hostname_url', None),
+                'api_key_set': bool(getattr(plugin, 'api_key', None)),
+                'session_active': bool(getattr(plugin, 'session', None))
+            }
+            
+            # Add method results if available
+            if hasattr(plugin, 'get_hostname_url'):
+                debug_info['hostname_url_method'] = plugin.get_hostname_url()
+            if hasattr(plugin, 'get_api_url'):
+                debug_info['api_url_method'] = plugin.get_api_url()
+            
+            return jsonify({
+                'success': True,
+                'plugin': plugin_name,
+                'debug_info': debug_info
+            })
+            
+        except Exception as e:
+            logger.error(f"Failed to get debug info for plugin {plugin_name}: {e}")
+            return jsonify({'error': str(e)}), 500
+
     return api

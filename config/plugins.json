@@ -23,7 +23,7 @@
     "enabled": true,
     "api_key": "YOUR_REAL_API_TOKEN_HERE",
     "base_url": "http://192.168.1.115:8000",
-    "hostname_url": "http://192.168.1.115:8000",
+    "hostname_url": "http://simple.local:8000",
     "timeout": 30,
     "auto_refresh": true,
     "page_size": 25

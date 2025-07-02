@@ -206,8 +206,8 @@
 let currentPluginName = null;
 
 function reloadPlugin(pluginName) {
-    if (confirm('Are you sure you want to reload the plugin "' + pluginName + '"?')) {
-        fetch('/api/plugins/' + pluginName + '/reload', {
+    if (confirm('Are you sure you want to reload the plugin configuration for "' + pluginName + '"?')) {
+        fetch('/api/plugins/' + pluginName + '/reload-config', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -216,10 +216,11 @@ function reloadPlugin(pluginName) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                showAlert('success', 'Plugin reloaded successfully');
+                showAlert('success', 'Plugin configuration reloaded successfully');
+                console.log('Plugin status:', data.plugin_status);
                 setTimeout(() => location.reload(), 1500);
             } else {
-                showAlert('danger', 'Failed to reload plugin: ' + data.error);
+                showAlert('danger', 'Failed to reload plugin configuration: ' + data.error);
             }
         })
         .catch(error => {
