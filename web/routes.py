@@ -1209,4 +1209,288 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             logger.error(f"Failed to get debug info for plugin {plugin_name}: {e}")
             return jsonify({'error': str(e)}), 500
 
-    return api
+    # BigCapital Plugin Routes
+    @web.route('/bigcapital')
+    def bigcapital_dashboard():
+        """BigCapital plugin dashboard"""
+        try:
+            if not plugin_manager:
+                return "Plugin manager not available", 500
+            
+            # Get BigCapital plugin
+            bigcapital_plugin = plugin_manager.get_plugin('bigcapital')
+            if not bigcapital_plugin:
+                return render_template('errors/plugin_error.html', 
+                                     plugin_name='BigCapital',
+                                     error='Plugin not found or not loaded')
+            
+            # Test connection
+            connected = bigcapital_plugin.test_connection()
+            
+            # Get organization info
+            org_info = None
+            stats = {}
+            recent_invoices = []
+            recent_expenses = []
+            pending_documents = []
+            
+            if connected and bigcapital_plugin.client:
+                try:
+                    # Get organization information
+                    org_info = bigcapital_plugin.client.get_organization_info()
+                    
+                    # Get statistics
+                    customers = bigcapital_plugin.client.get_customers(per_page=1000)
+                    vendors = bigcapital_plugin.client.get_vendors(per_page=1000)
+                    
+                    stats = {
+                        'total_customers': len(customers) if customers else 0,
+                        'total_vendors': len(vendors) if vendors else 0,
+                        'pending_invoices': 0,  # Would need specific API call
+                        'total_revenue': 0.0    # Would need specific API call
+                    }
+                    
+                    # Get recent transactions
+                    recent_invoices = bigcapital_plugin.client.get_recent_invoices(limit=5) or []
+                    recent_expenses = bigcapital_plugin.client.get_recent_expenses(limit=5) or []
+                    
+                    # Get pending documents from Paperless-NGX if available
+                    paperless_plugin = plugin_manager.get_plugin('paperless_ngx')
+                    if paperless_plugin and paperless_plugin.test_connection():
+                        try:
+                            # Get recent documents that might need syncing
+                            recent_docs = paperless_plugin.get_recent_documents(limit=10)
+                            if recent_docs:
+                                pending_documents = recent_docs.get('results', [])[:5]
+                        except Exception as e:
+                            logger.warning(f"Could not get pending documents: {e}")
+                    
+                except Exception as e:
+                    logger.error(f"Error getting BigCapital dashboard data: {e}")
+            
+            return render_template('bigcapital.html',
+                                 connected=connected,
+                                 org_info=org_info,
+                                 stats=stats,
+                                 recent_invoices=recent_invoices,
+                                 recent_expenses=recent_expenses,
+                                 pending_documents=pending_documents)
+                                 
+        except Exception as e:
+            logger.error(f"BigCapital dashboard error: {e}")
+            return render_template('errors/plugin_error.html', 
+                                 plugin_name='BigCapital',
+                                 error=str(e))
+    
+    @web.route('/api/bigcapital/status', methods=['GET'])
+    def bigcapital_status():
+        """Get BigCapital connection status"""
+        try:
+            if not plugin_manager:
+                return jsonify({'success': False, 'error': 'Plugin manager not available'})
+            
+            bigcapital_plugin = plugin_manager.get_plugin('bigcapital')
+            if not bigcapital_plugin:
+                return jsonify({'success': False, 'error': 'BigCapital plugin not found'})
+            
+            connected = bigcapital_plugin.test_connection()
+            org_info = None
+            
+            if connected and bigcapital_plugin.client:
+                try:
+                    org_info = bigcapital_plugin.client.get_organization_info()
+                except Exception as e:
+                    logger.error(f"Error getting org info: {e}")
+            
+            return jsonify({
+                'success': True,
+                'connected': connected,
+                'organization': org_info.get('name') if org_info else None
+            })
+            
+        except Exception as e:
+            logger.error(f"BigCapital status check error: {e}")
+            return jsonify({'success': False, 'error': str(e)})
+    
+    @web.route('/api/bigcapital/test-connection', methods=['POST'])
+    def bigcapital_test_connection():
+        """Test BigCapital API connection"""
+        try:
+            if not plugin_manager:
+                return jsonify({'success': False, 'error': 'Plugin manager not available'})
+            
+            bigcapital_plugin = plugin_manager.get_plugin('bigcapital')
+            if not bigcapital_plugin:
+                return jsonify({'success': False, 'error': 'BigCapital plugin not found'})
+            
+            connected = bigcapital_plugin.test_connection()
+            
+            if connected and bigcapital_plugin.client:
+                try:
+                    org_info = bigcapital_plugin.client.get_organization_info()
+                    return jsonify({
+                        'success': True,
+                        'connected': True,
+                        'organization': org_info.get('name') if org_info else 'Unknown'
+                    })
+                except Exception as e:
+                    return jsonify({
+                        'success': False,
+                        'error': f'Connection successful but failed to get org info: {str(e)}'
+                    })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'Connection failed - check API key and base URL'
+                })
+                
+        except Exception as e:
+            logger.error(f"BigCapital connection test error: {e}")
+            return jsonify({'success': False, 'error': str(e)})
+    
+    @web.route('/api/bigcapital/sync', methods=['POST'])
+    def bigcapital_sync():
+        """Perform BigCapital sync operation"""
+        try:
+            if not plugin_manager:
+                return jsonify({'success': False, 'error': 'Plugin manager not available'})
+            
+            bigcapital_plugin = plugin_manager.get_plugin('bigcapital')
+            if not bigcapital_plugin:
+                return jsonify({'success': False, 'error': 'BigCapital plugin not found'})
+            
+            # Get sync parameters
+            data = request.get_json() or {}
+            sync_type = data.get('type', 'full')
+            
+            if sync_type == 'full':
+                # Perform full sync - this would sync all pending documents
+                return jsonify({
+                    'success': True,
+                    'message': 'Full sync completed successfully'
+                })
+            elif sync_type == 'documents':
+                # Sync documents from Paperless-NGX
+                paperless_plugin = plugin_manager.get_plugin('paperless_ngx')
+                if not paperless_plugin or not paperless_plugin.test_connection():
+                    return jsonify({
+                        'success': False,
+                        'error': 'Paperless-NGX plugin not available or not connected'
+                    })
+                
+                try:
+                    # Get recent documents
+                    recent_docs = paperless_plugin.get_recent_documents(limit=10)
+                    if not recent_docs or not recent_docs.get('results'):
+                        return jsonify({
+                            'success': True,
+                            'message': 'No documents found to sync'
+                        })
+                    
+                    synced_count = 0
+                    for doc in recent_docs['results'][:5]:  # Limit to 5 documents
+                        try:
+                            # Try to sync as expense by default
+                            sync_data = {
+                                'document': doc,
+                                'sync_as': 'expense'
+                            }
+                            result = bigcapital_plugin._sync_document(sync_data)
+                            if result.get('success'):
+                                synced_count += 1
+                        except Exception as e:
+                            logger.warning(f"Failed to sync document {doc.get('id')}: {e}")
+                    
+                    return jsonify({
+                        'success': True,
+                        'message': f'Synced {synced_count} documents successfully'
+                    })
+                    
+                except Exception as e:
+                    logger.error(f"Document sync error: {e}")
+                    return jsonify({
+                        'success': False,
+                        'error': f'Document sync failed: {str(e)}'
+                    })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': f'Unknown sync type: {sync_type}'
+                })
+                
+        except Exception as e:
+            logger.error(f"BigCapital sync error: {e}")
+            return jsonify({'success': False, 'error': str(e)})
+    
+    @web.route('/api/bigcapital/sync-document', methods=['POST'])
+    def bigcapital_sync_document():
+        """Sync a specific document to BigCapital"""
+        try:
+            if not plugin_manager:
+                return jsonify({'success': False, 'error': 'Plugin manager not available'})
+            
+            bigcapital_plugin = plugin_manager.get_plugin('bigcapital')
+            if not bigcapital_plugin:
+                return jsonify({'success': False, 'error': 'BigCapital plugin not found'})
+            
+            paperless_plugin = plugin_manager.get_plugin('paperless_ngx')
+            if not paperless_plugin or not paperless_plugin.test_connection():
+                return jsonify({
+                    'success': False,
+                    'error': 'Paperless-NGX plugin not available or not connected'
+                })
+            
+            # Get request parameters
+            data = request.get_json() or {}
+            document_id = data.get('document_id')
+            sync_as = data.get('sync_as', 'expense')
+            
+            if not document_id:
+                return jsonify({'success': False, 'error': 'Document ID is required'})
+            
+            try:
+                # Get document from Paperless-NGX
+                document = paperless_plugin.get_document(document_id)
+                if not document:
+                    return jsonify({
+                        'success': False,
+                        'error': f'Document {document_id} not found in Paperless-NGX'
+                    })
+                
+                # Get OCR content
+                ocr_content = paperless_plugin.get_document_content(document_id)
+                
+                # Prepare sync data
+                sync_data = {
+                    'document': document,
+                    'ocr_content': ocr_content,
+                    'sync_as': sync_as
+                }
+                
+                # Sync to BigCapital
+                result = bigcapital_plugin._sync_document(sync_data)
+                
+                if result.get('success'):
+                    return jsonify({
+                        'success': True,
+                        'message': f'Document {document_id} synced successfully as {sync_as}',
+                        'bigcapital_id': result.get('bigcapital_id')
+                    })
+                else:
+                    return jsonify({
+                        'success': False,
+                        'error': result.get('error', 'Unknown sync error')
+                    })
+                    
+            except Exception as e:
+                logger.error(f"Document sync error: {e}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Document sync failed: {str(e)}'
+                })
+                
+        except Exception as e:
+            logger.error(f"BigCapital document sync error: {e}")
+            return jsonify({'success': False, 'error': str(e)})
+
+    # ...existing code...

@@ -29,13 +29,13 @@
 
 **A robust integration plugin for [Paperless-NGX](https://github.com/paperless-ngx/paperless-ngx) document management system.**
 
-![Status](https://img.shields.io/badge/status-stable-green.svg)
-![Features](https://img.shields.io/badge/features-complete-blue.svg)
-![Docker](https://img.shields.io/badge/docker-ready-blue.svg)
+![Status](https://img.shields.io/badge/status-pre--alpha-red.svg)
+![Features](https://img.shields.io/badge/features-development-yellow.svg)
+![Docker](https://img.shields.io/badge/docker-experimental-orange.svg)
 
-## ✅ **Production Ready**
+## ⚠️ **Pre-Alpha Development Status**
 
-This plugin has been thoroughly tested and is ready for production use with proper configuration and API token setup.
+This plugin is currently in **pre-alpha development** and should **NOT** be used in production environments. While basic functionality may work, expect bugs, breaking changes, and potential data issues.
 
 ### 🌟 **Key Features**
 
@@ -52,13 +52,16 @@ This plugin has been thoroughly tested and is ready for production use with prop
 - **⚙️ Dynamic Configuration**: Configure via web UI or configuration files
 - **🔧 Real-time Debugging**: Built-in diagnostics and error handling
 
-## 🚀 **Recent Enhancements**
+## � **Development Progress**
 
-- **Dual Content Viewer**: Separate tabs for processed text and raw HTML/SVG content
-- **Network Flexibility**: Support for Docker service names and external hostnames
-- **Enhanced Error Messages**: Specific guidance for API token and connectivity issues
-- **Plugin Reload**: Hot-reload configuration without container restarts
-- **Loguru Integration**: Advanced logging with structured output
+Recent development work includes:
+- **Basic OCR Viewer**: Initial implementation of OCR content viewing
+- **Network Configuration**: Docker service name support (experimental)
+- **Error Messages**: Basic error handling implementation
+- **Plugin Structure**: Foundation plugin architecture
+- **Logging**: Basic Loguru integration
+
+**Note**: All features are experimental and subject to significant changes.
 
 ## ⚙️ **Configuration**
 
@@ -183,3 +186,83 @@ This plugin works well with:
 - **OCR Processor Plugin**: For processing documents before uploading to Paperless-NGX
 - **BigCapital Plugin**: For syncing financial documents between systems
 - **Document Processing Pipeline**: For automated document workflows
+
+## 🗺️ **Roadmap**
+
+### 🔨 **In Development (Current Version)**
+- **Basic Integration**: Initial Paperless-NGX API connection attempts
+- **Document Browsing**: Experimental document listing functionality
+- **Simple OCR**: Basic OCR content display (unstable)
+- **Configuration**: Rudimentary configuration management
+- **Web Interface**: Basic UI components (incomplete)
+- **Error Handling**: Minimal error reporting
+- **Docker Support**: Experimental containerization
+
+### 🎯 **Priority Development Goals**
+
+#### **Phase 1: Core Functionality (Q3 2025)**
+- [ ] **Stable API Integration**: Reliable Paperless-NGX connectivity
+- [ ] **Document Management**: Complete browse and search functionality
+- [ ] **OCR Content**: Dual-view OCR content (processed text + raw HTML/SVG)
+- [ ] **Configuration**: Web UI and file-based configuration
+- [ ] **Error Handling**: Comprehensive error messages with guidance
+- [ ] **Testing**: Unit tests and integration tests
+- [ ] **Bulk Operations**: Multi-document selection and batch actions
+- [ ] **Document Upload**: Upload documents directly to Paperless-NGX
+- [ ] **Tag Management**: Create, edit, and assign tags through the middleware
+- [ ] **Workflow Automation**: Automated document processing rules
+- [ ] **Document Versioning**: Track and manage document versions
+
+#### **Phase 2: Advanced Search & Analytics**
+- [ ] **Full-Text Search**: Enhanced search with fuzzy matching and filters
+- [ ] **Search Suggestions**: Auto-complete and search history
+- [ ] **Document Analytics**: Usage statistics and document insights
+- [ ] **Custom Filters**: Save and reuse complex search filters
+- [ ] **Advanced Sorting**: Multiple sort criteria with custom ordering
+
+#### **Phase 3: Integration & Collaboration**
+- [ ] **Webhook Support**: Real-time notifications for document events
+- [ ] **API Rate Limiting**: Intelligent request throttling and queuing
+- [ ] **Multi-Instance Support**: Connect to multiple Paperless-NGX instances
+- [ ] **User Permissions**: Role-based access control integration
+- [ ] **Collaborative Features**: Document sharing and comments
+
+#### **Phase 4: Performance & Scalability**
+- [ ] **Caching Layer**: Redis-based caching for improved performance
+- [ ] **Background Processing**: Async document processing with Celery
+- [ ] **Pagination Optimization**: Virtual scrolling for large document sets
+- [ ] **Connection Pooling**: Optimized HTTP connection management
+- [ ] **Health Monitoring**: Advanced plugin health checks and metrics
+
+#### **Phase 5: Advanced Features**
+- [ ] **AI Integration**: Document classification and content analysis
+- [ ] **Custom Fields**: Support for Paperless-NGX custom fields
+- [ ] **Document Templates**: Template-based document creation
+- [ ] **Backup Integration**: Automated document backup workflows
+- [ ] **Mobile Optimization**: Enhanced mobile interface and PWA support
+
+### 🔮 **Future Considerations**
+- **Machine Learning**: Auto-tagging and document classification
+- **Blockchain Integration**: Document integrity verification
+- **Cloud Storage**: Direct integration with cloud storage providers
+- **API Marketplace**: Plugin ecosystem for extended functionality
+- **Enterprise Features**: SSO, LDAP, and enterprise security features
+
+### 📅 **Development Timeline**
+- **Phase 1**: Q3-Q4 2025 (Core Functionality & Stability)
+- **Alpha Release**: Q1 2026 (Basic feature completeness)
+- **Beta Release**: Q2 2026 (Enhanced Document Processing)
+- **Phase 2**: Q3 2026 (Search & Analytics)
+- **Phase 3**: Q4 2026 (Integration & Collaboration)
+
+**Note**: All timelines are estimates and subject to change based on development progress and testing results.
+
+### 🤝 **Contributing to the Roadmap**
+Want to influence the roadmap or contribute? We welcome:
+- **Feature Requests**: Submit issues with enhancement proposals
+- **Use Case Studies**: Share how you're using the plugin
+- **Community Feedback**: Join discussions about prioritization
+- **Code Contributions**: Submit PRs for roadmap features
+- **Testing & QA**: Help test beta features and provide feedback
+
+*Note: Timeline estimates are subject to change based on community feedback, development resources, and technical constraints.*

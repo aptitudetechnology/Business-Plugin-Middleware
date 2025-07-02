@@ -1,60 +1,94 @@
 """
 BigCapital Integration Plugin
+
+Enhanced BigCapital plugin with comprehensive document processing integration,
+robust error handling, and advanced sync capabilities.
 """
 from loguru import logger
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional, Tuple
 from flask import Blueprint, jsonify, request, render_template_string
+from datetime import datetime, date
+import json
 
 from core.base_plugin import IntegrationPlugin
 from core.exceptions import IntegrationError
-from .client import BigCapitalClient
+from .client import BigCapitalClient, BigCapitalAPIError
+from .models import BigCapitalContact, BigCapitalInvoice, BigCapitalExpense
+from .mappers import PaperlessNGXMapper, GenericDataMapper, ValidationHelper
 
 
 class BigCapitalPlugin(IntegrationPlugin):
-    """BigCapital integration plugin with web interface"""
+    """Enhanced BigCapital integration plugin with comprehensive features"""
     
-    def __init__(self, name: str, version: str = "1.0.0"):
+    def __init__(self, name: str, version: str = "2.0.0"):
         super().__init__(name, version)
         self.client = None
         self._dependencies = []
+        self._sync_stats = {
+            'last_sync': None,
+            'documents_processed': 0,
+            'invoices_created': 0,
+            'expenses_created': 0,
+            'contacts_created': 0,
+            'errors': 0
+        }
+        
+        # Cache for frequently accessed data
+        self._accounts_cache = {}
+        self._contacts_cache = {}
+        self._cache_timestamp = None
     
     def initialize(self, app_context: Dict[str, Any]) -> bool:
-        """Initialize BigCapital plugin"""
+        """Initialize BigCapital plugin with enhanced error handling"""
         try:
             # Get plugin configuration
             config = app_context.get('config')
             if not config:
-                logger.error("No configuration provided")
+                logger.error("No configuration provided to BigCapital plugin")
+                return False
+            
+            # Validate required configuration
+            if not self.validate_config(self.config):
+                logger.error("BigCapital plugin configuration validation failed")
                 return False
             
             # Initialize BigCapital client
             api_key = self.config.get('api_key')
             base_url = self.config.get('base_url', 'https://api.bigcapital.ly')
+            timeout = self.config.get('timeout', 30)
             
-            if not api_key:
-                logger.error("BigCapital API key not configured")
-                return False
+            self.client = BigCapitalClient(api_key, base_url, timeout)
             
-            self.client = BigCapitalClient(api_key, base_url)
-            
-            # Test connection
+            # Test connection with detailed logging
+            logger.info("Testing BigCapital API connection...")
             if not self.test_connection():
-                logger.error("Failed to connect to BigCapital")
+                logger.error("Failed to connect to BigCapital API")
                 return False
             
-            logger.info("BigCapital plugin initialized successfully")
+            # Load and cache essential data
+            self._load_essential_data()
+            
+            logger.info(f"BigCapital plugin v{self.version} initialized successfully")
             return True
             
         except Exception as e:
             logger.error(f"Failed to initialize BigCapital plugin: {e}")
+            logger.exception("Detailed error information:")
             return False
     
     def cleanup(self) -> bool:
         """Cleanup BigCapital plugin resources"""
         try:
             if self.client:
-                # Perform any necessary cleanup
-                pass
+                # Clear caches
+                self._accounts_cache.clear()
+                self._contacts_cache.clear()
+                self._cache_timestamp = None
+                
+                # Close session if needed
+                if hasattr(self.client, 'session'):
+                    self.client.session.close()
+            
             logger.info("BigCapital plugin cleaned up successfully")
             return True
         except Exception as e:
@@ -62,26 +96,71 @@ class BigCapitalPlugin(IntegrationPlugin):
             return False
     
     def test_connection(self) -> bool:
-        """Test connection to BigCapital API"""
+        """Test connection to BigCapital API with detailed feedback"""
         try:
             if not self.client:
+                logger.error("BigCapital client not initialized")
                 return False
             
             # Test API connection
-            response = self.client.get_organization_info()
-            return response is not None
+            org_info = self.client.get_organization_info()
+            if org_info:
+                org_name = org_info.get('name', 'Unknown')
+                logger.info(f"Successfully connected to BigCapital organization: {org_name}")
+                return True
+            else:
+                logger.error("Failed to retrieve organization info")
+                return False
             
+        except BigCapitalAPIError as e:
+            logger.error(f"BigCapital API error during connection test: {e}")
+            return False
         except Exception as e:
-            logger.error(f"BigCapital connection test failed: {e}")
+            logger.error(f"Unexpected error during connection test: {e}")
             return False
     
+    def _load_essential_data(self):
+        """Load and cache essential data for efficient operations"""
+        try:
+            logger.info("Loading essential BigCapital data...")
+            
+            # Cache accounts
+            accounts = self.client.get_accounts()
+            if accounts:
+                self._accounts_cache = {acc['id']: acc for acc in accounts}
+                logger.info(f"Cached {len(accounts)} accounts")
+            
+            # Cache recent contacts for quick lookup
+            contacts = self.client.get_contacts(per_page=100)  # Get first 100 contacts
+            if contacts:
+                self._contacts_cache = {
+                    contact['id']: contact for contact in contacts
+                }
+                # Also index by email for quick lookup
+                for contact in contacts:
+                    if contact.get('email'):
+                        self._contacts_cache[contact['email'].lower()] = contact
+                logger.info(f"Cached {len(contacts)} contacts")
+            
+            self._cache_timestamp = datetime.now()
+            
+        except Exception as e:
+            logger.warning(f"Failed to load essential data: {e}")
+    
+    def _refresh_cache_if_needed(self):
+        """Refresh cache if it's older than 1 hour"""
+        if (not self._cache_timestamp or 
+            (datetime.now() - self._cache_timestamp).seconds > 3600):
+            self._load_essential_data()
+    
     def sync_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Sync data with BigCapital"""
+        """Enhanced sync data with BigCapital"""
         try:
             if not self.client:
                 raise IntegrationError("BigCapital client not initialized")
             
             sync_type = data.get('type')
+            logger.info(f"Starting {sync_type} sync with BigCapital")
             
             if sync_type == 'invoice':
                 return self._sync_invoice(data)
@@ -89,69 +168,329 @@ class BigCapitalPlugin(IntegrationPlugin):
                 return self._sync_expense(data)
             elif sync_type == 'contact':
                 return self._sync_contact(data)
+            elif sync_type == 'document':
+                return self._sync_document(data)
             else:
                 raise IntegrationError(f"Unsupported sync type: {sync_type}")
             
-        except Exception as e:
-            logger.error(f"BigCapital sync failed: {e}")
+        except BigCapitalAPIError as e:
+            logger.error(f"BigCapital API error during sync: {e}")
+            self._sync_stats['errors'] += 1
             return {
                 'success': False,
-                'error': str(e)
+                'error': f'BigCapital API error: {str(e)}',
+                'error_type': 'api_error'
+            }
+        except IntegrationError as e:
+            logger.error(f"Integration error during sync: {e}")
+            self._sync_stats['errors'] += 1
+            return {
+                'success': False,
+                'error': str(e),
+                'error_type': 'integration_error'
+            }
+        except Exception as e:
+            logger.error(f"Unexpected error during sync: {e}")
+            logger.exception("Detailed error information:")
+            self._sync_stats['errors'] += 1
+            return {
+                'success': False,
+                'error': f'Unexpected error: {str(e)}',
+                'error_type': 'unexpected_error'
             }
     
-    def _sync_invoice(self, invoice_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Sync invoice with BigCapital"""
+    def _sync_document(self, document_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Sync a document from Paperless-NGX to BigCapital"""
         try:
+            document = document_data.get('document', {})
+            ocr_content = document_data.get('ocr_content', '')
+            sync_as = document_data.get('sync_as', 'expense')  # Default to expense
+            
+            if sync_as == 'expense':
+                # Convert document to expense
+                expense = PaperlessNGXMapper.document_to_expense(document, ocr_content)
+                
+                # Try to find or create vendor
+                vendor = PaperlessNGXMapper.extract_vendor_from_document(document, ocr_content)
+                if vendor:
+                    vendor_result = self._find_or_create_contact(vendor)
+                    if vendor_result.get('success') and vendor_result.get('contact_id'):
+                        expense.payee_id = vendor_result['contact_id']
+                
+                # Create expense in BigCapital
+                result = self.client.create_expense(expense.to_dict())
+                if result:
+                    self._sync_stats['expenses_created'] += 1
+                    return {'success': True, 'bigcapital_id': result.get('id'), 'type': 'expense'}
+                else:
+                    return {'success': False, 'error': 'Failed to create expense in BigCapital'}
+                
+            elif sync_as == 'invoice':
+                # Convert document to invoice
+                # First, try to determine customer
+                customer_id = document_data.get('customer_id', 1)  # Default customer
+                
+                invoice = PaperlessNGXMapper.document_to_invoice(document, ocr_content, customer_id)
+                
+                # Create invoice in BigCapital
+                result = self.client.create_invoice(invoice.to_dict())
+                if result:
+                    self._sync_stats['invoices_created'] += 1
+                    return {'success': True, 'bigcapital_id': result.get('id'), 'type': 'invoice'}
+                else:
+                    return {'success': False, 'error': 'Failed to create invoice in BigCapital'}
+                    
+            else:
+                return {'success': False, 'error': f'Unsupported sync type: {sync_as}'}
+                
+        except Exception as e:
+            logger.error(f"Document sync failed: {e}")
+            raise IntegrationError(f"Document sync failed: {e}")
+    
+    def _sync_invoice(self, invoice_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Enhanced invoice sync with validation and error handling"""
+        try:
+            # Validate invoice data
+            if not self._validate_invoice_data(invoice_data):
+                return {'success': False, 'error': 'Invalid invoice data'}
+            
             # Transform invoice data to BigCapital format
             bc_invoice = self._transform_invoice_data(invoice_data)
             
-            # Create or update invoice in BigCapital
-            result = self.client.create_invoice(bc_invoice)
+            # Validate customer exists
+            customer_id = bc_invoice.get('customer_id')
+            if customer_id and not self._customer_exists(customer_id):
+                return {'success': False, 'error': f'Customer {customer_id} not found'}
             
-            return {
-                'success': True,
-                'bigcapital_id': result.get('id'),
-                'message': 'Invoice synced successfully'
-            }
+            # Create or update invoice in BigCapital
+            invoice_id = invoice_data.get('bigcapital_id')
+            if invoice_id:
+                # Update existing invoice
+                result = self.client.update_invoice(invoice_id, bc_invoice)
+            else:
+                # Create new invoice
+                result = self.client.create_invoice(bc_invoice)
+            
+            if result:
+                self._sync_stats['invoices_created'] += 1
+                return {
+                    'success': True,
+                    'bigcapital_id': result.get('id'),
+                    'invoice_number': result.get('invoice_number'),
+                    'message': 'Invoice synced successfully'
+                }
+            else:
+                return {'success': False, 'error': 'Failed to sync invoice'}
             
         except Exception as e:
             raise IntegrationError(f"Invoice sync failed: {e}")
     
     def _sync_expense(self, expense_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Sync expense with BigCapital"""
+        """Enhanced expense sync with validation and vendor lookup"""
         try:
+            # Validate expense data
+            if not self._validate_expense_data(expense_data):
+                return {'success': False, 'error': 'Invalid expense data'}
+            
             # Transform expense data to BigCapital format
             bc_expense = self._transform_expense_data(expense_data)
             
-            # Create or update expense in BigCapital
-            result = self.client.create_expense(bc_expense)
+            # Try to find or create vendor if vendor info provided
+            vendor_info = expense_data.get('vendor')
+            if vendor_info:
+                vendor_result = self._find_or_create_contact(vendor_info, 'vendor')
+                if vendor_result.get('success'):
+                    bc_expense['payee_id'] = vendor_result['contact_id']
             
-            return {
-                'success': True,
-                'bigcapital_id': result.get('id'),
-                'message': 'Expense synced successfully'
-            }
+            # Create or update expense in BigCapital
+            expense_id = expense_data.get('bigcapital_id')
+            if expense_id:
+                # Update existing expense
+                result = self.client.update_expense(expense_id, bc_expense)
+            else:
+                # Create new expense
+                result = self.client.create_expense(bc_expense)
+            
+            if result:
+                self._sync_stats['expenses_created'] += 1
+                return {
+                    'success': True,
+                    'bigcapital_id': result.get('id'),
+                    'message': 'Expense synced successfully'
+                }
+            else:
+                return {'success': False, 'error': 'Failed to sync expense'}
             
         except Exception as e:
             raise IntegrationError(f"Expense sync failed: {e}")
     
     def _sync_contact(self, contact_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Sync contact with BigCapital"""
+        """Enhanced contact sync with duplicate detection"""
         try:
+            # Validate contact data
+            if not self._validate_contact_data(contact_data):
+                return {'success': False, 'error': 'Invalid contact data'}
+            
             # Transform contact data to BigCapital format
             bc_contact = self._transform_contact_data(contact_data)
             
-            # Create or update contact in BigCapital
-            result = self.client.create_contact(bc_contact)
+            # Check for existing contact
+            existing_contact = self._find_existing_contact(bc_contact)
+            if existing_contact:
+                # Update existing contact
+                result = self.client.update_contact(existing_contact['id'], bc_contact)
+                action = 'updated'
+            else:
+                # Create new contact
+                result = self.client.create_contact(bc_contact)
+                action = 'created'
             
-            return {
-                'success': True,
-                'bigcapital_id': result.get('id'),
-                'message': 'Contact synced successfully'
-            }
+            if result:
+                self._sync_stats['contacts_created'] += 1
+                return {
+                    'success': True,
+                    'bigcapital_id': result.get('id'),
+                    'action': action,
+                    'message': f'Contact {action} successfully'
+                }
+            else:
+                return {'success': False, 'error': f'Failed to {action} contact'}
             
         except Exception as e:
             raise IntegrationError(f"Contact sync failed: {e}")
+    
+    def _find_or_create_contact(self, contact_data: Any, contact_type: str = 'vendor') -> Dict[str, Any]:
+        """Find existing contact or create new one"""
+        try:
+            # If contact_data is a BigCapitalContact object, convert to dict
+            if hasattr(contact_data, 'to_dict'):
+                contact_dict = contact_data.to_dict()
+            else:
+                contact_dict = contact_data
+            
+            contact_dict['contact_type'] = contact_type
+            
+            # Check cache first
+            self._refresh_cache_if_needed()
+            
+            # Look for existing contact by email
+            email = contact_dict.get('email', '').lower()
+            if email and email in self._contacts_cache:
+                existing_contact = self._contacts_cache[email]
+                return {
+                    'success': True,
+                    'contact_id': existing_contact['id'],
+                    'action': 'found_existing'
+                }
+            
+            # Search by name
+            display_name = contact_dict.get('display_name', '')
+            if display_name:
+                search_results = self.client.search_contacts(display_name, contact_type)
+                if search_results:
+                    # Use first match
+                    existing_contact = search_results[0]
+                    return {
+                        'success': True,
+                        'contact_id': existing_contact['id'],
+                        'action': 'found_by_search'
+                    }
+            
+            # Create new contact
+            result = self.client.create_contact(contact_dict)
+            if result:
+                # Update cache
+                contact_id = result['id']
+                self._contacts_cache[contact_id] = result
+                if email:
+                    self._contacts_cache[email] = result
+                
+                return {
+                    'success': True,
+                    'contact_id': contact_id,
+                    'action': 'created'
+                }
+            else:
+                return {'success': False, 'error': 'Failed to create contact'}
+                
+        except Exception as e:
+            logger.error(f"Failed to find or create contact: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    # Validation Methods
+    def _validate_invoice_data(self, data: Dict[str, Any]) -> bool:
+        """Validate invoice data"""
+        required_fields = ['customer_id', 'line_items']
+        
+        for field in required_fields:
+            if field not in data:
+                logger.error(f"Missing required invoice field: {field}")
+                return False
+        
+        # Validate line items
+        line_items = data.get('line_items', [])
+        if not line_items:
+            logger.error("Invoice must have at least one line item")
+            return False
+        
+        for item in line_items:
+            if not ValidationHelper.validate_amount(item.get('amount', 0)):
+                logger.error(f"Invalid amount in line item: {item}")
+                return False
+        
+        return True
+    
+    def _validate_expense_data(self, data: Dict[str, Any]) -> bool:
+        """Validate expense data"""
+        required_fields = ['amount', 'payment_account_id']
+        
+        for field in required_fields:
+            if field not in data:
+                logger.error(f"Missing required expense field: {field}")
+                return False
+        
+        if not ValidationHelper.validate_amount(data.get('amount', 0)):
+            logger.error("Invalid expense amount")
+            return False
+        
+        return True
+    
+    def _validate_contact_data(self, data: Dict[str, Any]) -> bool:
+        """Validate contact data"""
+        if not data.get('display_name'):
+            logger.error("Contact must have a display name")
+            return False
+        
+        email = data.get('email')
+        if email and not ValidationHelper.validate_email(email):
+            logger.error(f"Invalid email format: {email}")
+            return False
+        
+        return True
+    
+    def _customer_exists(self, customer_id: int) -> bool:
+        """Check if customer exists"""
+        self._refresh_cache_if_needed()
+        return customer_id in self._contacts_cache
+    
+    def _find_existing_contact(self, contact_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Find existing contact by email or name"""
+        self._refresh_cache_if_needed()
+        
+        # Search by email first
+        email = contact_data.get('email', '').lower()
+        if email and email in self._contacts_cache:
+            return self._contacts_cache[email]
+        
+        # Search by name
+        display_name = contact_data.get('display_name', '')
+        if display_name:
+            for contact in self._contacts_cache.values():
+                if (isinstance(contact, dict) and 
+                    contact.get('display_name', '').lower() == display_name.lower()):
+                    return contact
+        
+        return None
     
     def _transform_invoice_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Transform invoice data to BigCapital format"""
