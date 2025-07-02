@@ -947,4 +947,85 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             logger.error(f"Plugin retry all error: {e}")
             return jsonify({'error': str(e)}), 500
     
+    @web.route('/system')
+    def system_diagnostics():
+        """System diagnostics and network information"""
+        try:
+            import socket
+            import subprocess
+            import os
+            
+            # Get container information
+            container_info = {
+                'hostname': socket.gethostname(),
+                'container_ip': None,
+                'network_interfaces': [],
+                'dns_servers': [],
+                'docker_network': None,
+                'environment_vars': {}
+            }
+            
+            # Get container IP address
+            try:
+                container_info['container_ip'] = socket.gethostbyname(socket.gethostname())
+            except:
+                container_info['container_ip'] = 'Unknown'
+            
+            # Get network interfaces
+            try:
+                result = subprocess.run(['ip', 'addr', 'show'], capture_output=True, text=True, timeout=5)
+                container_info['network_interfaces'] = result.stdout.split('\n')[:20]  # Limit output
+            except:
+                container_info['network_interfaces'] = ['Unable to get network interfaces']
+            
+            # Get DNS configuration
+            try:
+                if os.path.exists('/etc/resolv.conf'):
+                    with open('/etc/resolv.conf', 'r') as f:
+                        container_info['dns_servers'] = [line.strip() for line in f.readlines()[:10]]
+            except:
+                container_info['dns_servers'] = ['Unable to read DNS configuration']
+            
+            # Get Docker network information
+            try:
+                result = subprocess.run(['cat', '/proc/1/cgroup'], capture_output=True, text=True, timeout=5)
+                for line in result.stdout.split('\n'):
+                    if 'docker' in line and '/' in line:
+                        container_info['docker_network'] = line.split('/')[-1][:12]  # Container ID
+                        break
+            except:
+                container_info['docker_network'] = 'Unable to determine'
+            
+            # Get relevant environment variables
+            env_vars_to_show = ['COMPOSE_PROJECT_NAME', 'COMPOSE_SERVICE', 'HOSTNAME', 'PATH']
+            for var in env_vars_to_show:
+                container_info['environment_vars'][var] = os.environ.get(var, 'Not set')
+            
+            # Test connectivity to common targets
+            connectivity_tests = {
+                'localhost': test_connection('localhost', 8000),
+                'host.docker.internal': test_connection('host.docker.internal', 8000),
+                'paperless-ngx': test_connection('paperless-ngx', 8000),
+                'simple.local': test_connection('simple.local', 8000),
+                'google_dns': test_connection('8.8.8.8', 53)
+            }
+            
+            return render_template('system.html', 
+                                 container_info=container_info,
+                                 connectivity_tests=connectivity_tests)
+        except Exception as e:
+            logger.error(f"System diagnostics error: {e}")
+            return f"Error getting system information: {str(e)}", 500
+    
+    def test_connection(host, port, timeout=3):
+        """Test TCP connection to host:port"""
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(timeout)
+            result = sock.connect_ex((host, port))
+            sock.close()
+            return result == 0
+        except Exception as e:
+            return f"Error: {str(e)}"
+
     return api

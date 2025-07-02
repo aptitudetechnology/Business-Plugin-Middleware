@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}System Diagnostics{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="h3 mb-4">🔍 System Diagnostics</h1>
+            
+            <!-- Container Information -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">📦 Container Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Hostname:</strong></td>
+                                    <td><code>{{ container_info.hostname }}</code></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Container IP:</strong></td>
+                                    <td><code>{{ container_info.container_ip }}</code></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Docker Network:</strong></td>
+                                    <td><code>{{ container_info.docker_network }}</code></td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Environment Variables:</h6>
+                            <table class="table table-sm">
+                                {% for var, value in container_info.environment_vars.items() %}
+                                <tr>
+                                    <td><strong>{{ var }}:</strong></td>
+                                    <td><code>{{ value }}</code></td>
+                                </tr>
+                                {% endfor %}
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Network Connectivity Tests -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">🌐 Network Connectivity Tests</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for target, result in connectivity_tests.items() %}
+                        <div class="col-md-4 mb-2">
+                            <div class="d-flex align-items-center">
+                                {% if result == True %}
+                                    <span class="badge bg-success me-2">✓</span>
+                                {% elif result == False %}
+                                    <span class="badge bg-danger me-2">✗</span>
+                                {% else %}
+                                    <span class="badge bg-warning me-2">?</span>
+                                {% endif %}
+                                <strong>{{ target }}:</strong>
+                                <span class="ms-2">
+                                    {% if result == True %}
+                                        Connected
+                                    {% elif result == False %}
+                                        Failed
+                                    {% else %}
+                                        {{ result }}
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- DNS Configuration -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">🔍 DNS Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <pre class="bg-light p-3 rounded"><code>{% for line in container_info.dns_servers %}{{ line }}
+{% endfor %}</code></pre>
+                </div>
+            </div>
+            
+            <!-- Network Interfaces -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">🔌 Network Interfaces</h5>
+                </div>
+                <div class="card-body">
+                    <pre class="bg-light p-3 rounded" style="max-height: 400px; overflow-y: auto;"><code>{% for line in container_info.network_interfaces %}{{ line }}
+{% endfor %}</code></pre>
+                </div>
+            </div>
+            
+            <!-- Recommendations -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">💡 Recommendations</h5>
+                </div>
+                <div class="card-body">
+                    <h6>For Paperless-NGX Connection:</h6>
+                    <ul>
+                        <li>
+                            {% if connectivity_tests['paperless-ngx'] %}
+                                <span class="text-success">✓ paperless-ngx service is reachable</span> - Use <code>http://paperless-ngx:8000</code>
+                            {% elif connectivity_tests['host.docker.internal'] %}
+                                <span class="text-warning">⚠ Use host.docker.internal</span> - Use <code>http://host.docker.internal:8000</code>
+                            {% elif connectivity_tests['localhost'] %}
+                                <span class="text-warning">⚠ Use localhost</span> - Use <code>http://localhost:8000</code>
+                            {% else %}
+                                <span class="text-danger">✗ No Paperless-NGX connectivity detected</span>
+                            {% endif %}
+                        </li>
+                        <li>If running separate Paperless-NGX containers, consider using <code>host.docker.internal:8000</code></li>
+                        <li>For external hostname, use your server's LAN IP or hostname (e.g., <code>http://simple.local:8000</code>)</li>
+                    </ul>
+                    
+                    <h6 class="mt-3">Current Configuration Suggestions:</h6>
+                    <div class="bg-light p-3 rounded">
+                        <strong>config.ini:</strong>
+                        <pre><code>[paperless]
+{% if connectivity_tests['paperless-ngx'] %}api_url = http://paperless-ngx:8000{% elif connectivity_tests['host.docker.internal'] %}api_url = http://host.docker.internal:8000{% else %}api_url = http://localhost:8000{% endif %}
+hostname_url = http://simple.local:8000
+api_token = YOUR_REAL_API_TOKEN_HERE</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
