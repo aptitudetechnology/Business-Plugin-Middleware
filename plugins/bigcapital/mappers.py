@@ -408,8 +408,21 @@ class ValidationHelper:
     
     @staticmethod
     def validate_amount(amount: Any) -> bool:
-        """Validate that amount is positive"""
+        """Validate that amount is positive and valid"""
         try:
+            # First check if it's a valid numeric value
+            if isinstance(amount, str):
+                # Remove currency symbols and commas for validation
+                cleaned = re.sub(r'[^\d.-]', '', amount)
+                if not cleaned or cleaned in ['-', '.', '-.']:
+                    return False
+                try:
+                    float(cleaned)
+                except ValueError:
+                    return False
+            elif not isinstance(amount, (int, float, Decimal)):
+                return False
+            
             decimal_amount = GenericDataMapper.normalize_amount(amount)
             return decimal_amount >= 0
         except Exception:

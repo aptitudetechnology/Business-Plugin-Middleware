@@ -293,21 +293,59 @@ class BigCapitalOrganization:
 # Helper functions for model creation
 def create_contact_from_dict(data: Dict[str, Any]) -> BigCapitalContact:
     """Create BigCapitalContact from dictionary data"""
-    return BigCapitalContact(**{k: v for k, v in data.items() if hasattr(BigCapitalContact, k)})
+    # Get valid field names from the dataclass
+    from dataclasses import fields
+    valid_fields = {field.name for field in fields(BigCapitalContact)}
+    
+    # Filter data to only include valid fields
+    filtered_data = {k: v for k, v in data.items() if k in valid_fields}
+    
+    # Ensure required fields are present
+    if 'display_name' not in filtered_data:
+        filtered_data['display_name'] = 'Unknown Contact'
+    
+    return BigCapitalContact(**filtered_data)
 
 
 def create_invoice_from_dict(data: Dict[str, Any]) -> BigCapitalInvoice:
     """Create BigCapitalInvoice from dictionary data"""
-    entries_data = data.pop('entries', [])
-    invoice = BigCapitalInvoice(**{k: v for k, v in data.items() if hasattr(BigCapitalInvoice, k)})
+    from dataclasses import fields
     
+    # Make a copy to avoid modifying original data
+    data_copy = data.copy()
+    entries_data = data_copy.pop('entries', [])
+    
+    # Get valid field names
+    valid_fields = {field.name for field in fields(BigCapitalInvoice)}
+    filtered_data = {k: v for k, v in data_copy.items() if k in valid_fields}
+    
+    # Ensure required fields
+    if 'customer_id' not in filtered_data:
+        filtered_data['customer_id'] = 1
+    if 'invoice_date' not in filtered_data:
+        filtered_data['invoice_date'] = date.today()
+    if 'due_date' not in filtered_data:
+        filtered_data['due_date'] = date.today()
+    
+    invoice = BigCapitalInvoice(**filtered_data)
+    
+    # Add entries
     for entry_data in entries_data:
-        entry = BigCapitalInvoiceEntry(**{k: v for k, v in entry_data.items() if hasattr(BigCapitalInvoiceEntry, k)})
-        invoice.entries.append(entry)
+        entry_fields = {field.name for field in fields(BigCapitalInvoiceEntry)}
+        entry_filtered = {k: v for k, v in entry_data.items() if k in entry_fields}
+        if entry_filtered:  # Only add if there's valid data
+            entry = BigCapitalInvoiceEntry(**entry_filtered)
+            invoice.entries.append(entry)
     
     return invoice
 
 
 def create_expense_from_dict(data: Dict[str, Any]) -> BigCapitalExpense:
     """Create BigCapitalExpense from dictionary data"""
-    return BigCapitalExpense(**{k: v for k, v in data.items() if hasattr(BigCapitalExpense, k)})
+    from dataclasses import fields
+    
+    # Get valid field names
+    valid_fields = {field.name for field in fields(BigCapitalExpense)}
+    filtered_data = {k: v for k, v in data.items() if k in valid_fields}
+    
+    return BigCapitalExpense(**filtered_data)

@@ -291,6 +291,8 @@ class TestValidationHelper(unittest.TestCase):
         self.assertTrue(ValidationHelper.validate_amount(Decimal('75.25')))
         self.assertFalse(ValidationHelper.validate_amount(-50))
         self.assertFalse(ValidationHelper.validate_amount('invalid'))
+        self.assertFalse(ValidationHelper.validate_amount(''))
+        self.assertFalse(ValidationHelper.validate_amount(None))
     
     def test_sanitize_string(self):
         """Test string sanitization"""
