@@ -25,11 +25,27 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Create necessary directories
+# Create necessary directories and set permissions
 RUN mkdir -p logs uploads config database data
 
 # Copy default configuration if it doesn't exist
 RUN if [ ! -f config/config.ini ]; then cp config/config.ini.example config/config.ini || true; fi
+
+# Create non-root user
+RUN useradd --create-home --shell /bin/bash middleware
+
+# Create startup script to handle permissions
+RUN echo '#!/bin/bash' > /app/start.sh && \
+    echo 'echo "🚀 Starting Business Plugin Middleware..."' >> /app/start.sh && \
+    echo 'echo "📁 Created necessary directories"' >> /app/start.sh && \
+    echo 'mkdir -p /app/logs /app/uploads /app/data /app/config' >> /app/start.sh && \
+    echo 'chmod 755 /app/logs /app/uploads /app/data /app/config' >> /app/start.sh && \
+    echo 'echo "🐍 Starting Python application..."' >> /app/start.sh && \
+    echo 'cd /app && python web/app.py' >> /app/start.sh && \
+    chmod +x /app/start.sh
+
+# Set ownership but run as root to handle volume permissions
+RUN chown -R middleware:middleware /app
 
 # Expose port
 EXPOSE 5000
@@ -43,10 +59,5 @@ ENV PYTHONPATH=/app
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:5000/api/health || exit 1
 
-# Create non-root user
-RUN useradd --create-home --shell /bin/bash middleware
-RUN chown -R middleware:middleware /app
-USER middleware
-
-# Run application
-CMD ["python", "web/app.py"]
+# Use startup script to handle permissions and start app
+CMD ["/app/start.sh"]

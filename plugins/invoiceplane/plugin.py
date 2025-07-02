@@ -12,7 +12,6 @@ from .client import InvoicePlaneClient
 
 class InvoicePlanePlugin(IntegrationPlugin):
     """InvoicePlane integration plugin with web interface"""
-    """InvoicePlane integration plugin with web interface"""
     
     def __init__(self, name: str, version: str = "1.0.0"):
         super().__init__(name, version)
