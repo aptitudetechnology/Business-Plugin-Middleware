@@ -374,13 +374,13 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 🔮 Roadmap
 
-- [ ] Additional accounting system plugins (QuickBooks, Xero)
+
 - [ ] Advanced OCR with AI/ML integration
 - [ ] Webhook support for real-time integrations
 - [ ] Enhanced security features (OAuth, JWT)
 - [ ] Mobile-responsive interface improvements
 - [ ] API rate limiting and caching
-- [ ] Plugin marketplace and packaging system
+
 
 ---
 
