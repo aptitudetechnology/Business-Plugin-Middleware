@@ -202,6 +202,10 @@ class BigCapitalPlugin(IntegrationPlugin):
     def _sync_document(self, document_data: Dict[str, Any]) -> Dict[str, Any]:
         """Sync a document from Paperless-NGX to BigCapital"""
         try:
+            # Check if client is initialized
+            if not self.client:
+                return {'success': False, 'error': 'BigCapital client not initialized'}
+                
             document = document_data.get('document', {})
             ocr_content = document_data.get('ocr_content', '')
             sync_as = document_data.get('sync_as', 'expense')  # Default to expense
