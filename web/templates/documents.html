@@ -357,14 +357,21 @@ function showOCRContent(documentId) {
             currentOCRText = processedData.ocr_content || 'No processed OCR content available.';
             document.getElementById('ocrText').value = currentOCRText;
         } else {
-            document.getElementById('ocrText').value = 'Error loading processed content: ' + (processedData.error || 'Unknown error');
+            const errorMsg = processedData.error || 'Unknown error';
+            document.getElementById('ocrText').value = 'Error loading processed content: ' + errorMsg;
+            
+            // Show specific error for API token issues
+            if (errorMsg.includes('API token') || errorMsg.includes('API key')) {
+                document.getElementById('ocrText').value += '\n\nPlease update your Paperless-NGX API token in the Plugins configuration.';
+            }
         }
         
         if (rawData.success) {
             currentRawOCRText = rawData.raw_content || 'No raw OCR content available.';
             document.getElementById('rawOcrText').value = currentRawOCRText;
         } else {
-            document.getElementById('rawOcrText').value = 'Error loading raw content: ' + (rawData.error || 'Unknown error');
+            const errorMsg = rawData.error || 'Unknown error';
+            document.getElementById('rawOcrText').value = 'Error loading raw content: ' + errorMsg;
         }
         
         document.getElementById('ocrContent').style.display = 'block';
@@ -372,7 +379,7 @@ function showOCRContent(documentId) {
     }).catch(error => {
         console.error('Error fetching OCR content:', error);
         document.getElementById('ocrLoadingSpinner').style.display = 'none';
-        document.getElementById('ocrErrorMessage').textContent = 'Network error while fetching OCR content.';
+        document.getElementById('ocrErrorMessage').textContent = 'Network error while fetching OCR content: ' + error.message;
         document.getElementById('ocrError').style.display = 'block';
     });
 }
@@ -446,7 +453,12 @@ function showDocumentDetails(documentId) {
     
     // Fetch document details
     fetch(`/api/documents/${documentId}/details`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(data => {
             document.getElementById('detailsLoadingSpinner').style.display = 'none';
             
@@ -454,14 +466,27 @@ function showDocumentDetails(documentId) {
                 displayDocumentDetails(data.document);
                 document.getElementById('detailsContent').style.display = 'block';
             } else {
-                document.getElementById('detailsErrorMessage').textContent = data.error || 'Failed to load document details.';
+                let errorMsg = data.error || 'Failed to load document details.';
+                
+                // Show specific guidance for API token issues
+                if (errorMsg.includes('API token') || errorMsg.includes('API key')) {
+                    errorMsg += '\n\nTo fix this:\n1. Go to your Paperless-NGX settings\n2. Create an API token\n3. Update the token in the Plugins configuration';
+                }
+                
+                document.getElementById('detailsErrorMessage').textContent = errorMsg;
                 document.getElementById('detailsError').style.display = 'block';
             }
         })
         .catch(error => {
             console.error('Error fetching document details:', error);
             document.getElementById('detailsLoadingSpinner').style.display = 'none';
-            document.getElementById('detailsErrorMessage').textContent = 'Network error while fetching document details.';
+            
+            let errorMsg = 'Network error while fetching document details.';
+            if (error.message) {
+                errorMsg += ` (${error.message})`;
+            }
+            
+            document.getElementById('detailsErrorMessage').textContent = errorMsg;
             document.getElementById('detailsError').style.display = 'block';
         });
 }

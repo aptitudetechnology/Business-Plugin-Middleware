@@ -1032,13 +1032,22 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
     def get_document_ocr(doc_id):
         """Get OCR content for a document"""
         try:
+            logger.info(f"Fetching OCR content for document ID: {doc_id}")
+            
             if not plugin_manager:
+                logger.error("Plugin manager not available")
                 return jsonify({'error': 'Plugin manager not available'}), 500
             
             # Get Paperless-NGX plugin
             paperless_plugin = plugin_manager.get_plugin('paperless_ngx')
             if not paperless_plugin:
+                logger.error("Paperless-NGX plugin not found")
                 return jsonify({'error': 'Paperless-NGX plugin not available'}), 404
+            
+            # Check for placeholder API key
+            if paperless_plugin.api_key in ['YOUR_REAL_API_TOKEN_HERE', 'PLACEHOLDER_TOKEN_REPLACE_ME', 'your_api_token_here']:
+                logger.warning("Paperless-NGX plugin using placeholder API key")
+                return jsonify({'error': 'Please update the Paperless-NGX API token with a real token from your Paperless-NGX instance.'}), 400
             
             # Get OCR content
             ocr_content = paperless_plugin.get_document_content(doc_id)
@@ -1057,16 +1066,38 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
     def get_document_details(doc_id):
         """Get detailed information for a document"""
         try:
+            logger.info(f"Fetching document details for document ID: {doc_id}")
+            
             if not plugin_manager:
+                logger.error("Plugin manager not available")
                 return jsonify({'error': 'Plugin manager not available'}), 500
             
             # Get Paperless-NGX plugin
             paperless_plugin = plugin_manager.get_plugin('paperless_ngx')
             if not paperless_plugin:
+                logger.error("Paperless-NGX plugin not found")
                 return jsonify({'error': 'Paperless-NGX plugin not available'}), 404
+            
+            # Check if plugin is properly configured
+            if not hasattr(paperless_plugin, 'base_url') or not paperless_plugin.base_url:
+                logger.error("Paperless-NGX plugin not properly configured - missing base_url")
+                return jsonify({'error': 'Paperless-NGX plugin not properly configured'}), 500
+                
+            if not hasattr(paperless_plugin, 'api_key') or not paperless_plugin.api_key:
+                logger.error("Paperless-NGX plugin not properly configured - missing API key")
+                return jsonify({'error': 'Paperless-NGX plugin missing API key. Please configure in the plugins section.'}), 500
+            
+            # Check for placeholder API key
+            if paperless_plugin.api_key in ['YOUR_REAL_API_TOKEN_HERE', 'PLACEHOLDER_TOKEN_REPLACE_ME', 'your_api_token_here']:
+                logger.warning("Paperless-NGX plugin using placeholder API key")
+                return jsonify({'error': 'Please update the Paperless-NGX API token with a real token from your Paperless-NGX instance.'}), 400
+            
+            logger.info(f"Calling paperless_plugin.get_document({doc_id})")
             
             # Get document details
             document = paperless_plugin.get_document(doc_id)
+            
+            logger.info(f"Successfully retrieved document details for ID: {doc_id}")
             
             return jsonify({
                 'success': True,
