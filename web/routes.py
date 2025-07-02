@@ -997,7 +997,7 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
         except Exception as e:
             logger.error(f"Plugin retry error: {e}")
             return jsonify({'error': str(e)}), 500
-
+    
     @api.route('/plugins/retry-all-failed', methods=['POST'])
     def retry_all_failed_plugins():
         """Retry all failed plugins"""
@@ -1026,6 +1026,55 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             
         except Exception as e:
             logger.error(f"Plugin retry all error: {e}")
+            return jsonify({'error': str(e)}), 500
+
+    @api.route('/documents/<int:doc_id>/ocr', methods=['GET'])
+    def get_document_ocr(doc_id):
+        """Get OCR content for a document"""
+        try:
+            if not plugin_manager:
+                return jsonify({'error': 'Plugin manager not available'}), 500
+            
+            # Get Paperless-NGX plugin
+            paperless_plugin = plugin_manager.get_plugin('paperless_ngx')
+            if not paperless_plugin:
+                return jsonify({'error': 'Paperless-NGX plugin not available'}), 404
+            
+            # Get OCR content
+            ocr_content = paperless_plugin.get_document_content(doc_id)
+            
+            return jsonify({
+                'success': True,
+                'document_id': doc_id,
+                'ocr_content': ocr_content
+            })
+            
+        except Exception as e:
+            logger.error(f"Failed to get OCR content for document {doc_id}: {e}")
+            return jsonify({'error': str(e)}), 500
+
+    @api.route('/documents/<int:doc_id>/details', methods=['GET'])
+    def get_document_details(doc_id):
+        """Get detailed information for a document"""
+        try:
+            if not plugin_manager:
+                return jsonify({'error': 'Plugin manager not available'}), 500
+            
+            # Get Paperless-NGX plugin
+            paperless_plugin = plugin_manager.get_plugin('paperless_ngx')
+            if not paperless_plugin:
+                return jsonify({'error': 'Paperless-NGX plugin not available'}), 404
+            
+            # Get document details
+            document = paperless_plugin.get_document(doc_id)
+            
+            return jsonify({
+                'success': True,
+                'document': document
+            })
+            
+        except Exception as e:
+            logger.error(f"Failed to get document details for document {doc_id}: {e}")
             return jsonify({'error': str(e)}), 500
 
     return api

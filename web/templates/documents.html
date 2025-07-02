@@ -121,6 +121,9 @@
                                                     <i class="fas fa-download"></i>
                                                 </a>
                                                 {% endif %}
+                                                <button class="btn btn-outline-success" title="View OCR Content" onclick="showOCRContent('{{ document.id }}')">
+                                                    <i class="fas fa-search-plus"></i>
+                                                </button>
                                                 <button class="btn btn-outline-info" title="Details" onclick="showDocumentDetails('{{ document.id }}')">
                                                     <i class="fas fa-info-circle"></i>
                                                 </button>
@@ -209,7 +212,74 @@
     </div>
 </div>
 
+<!-- OCR Content Modal -->
+<div class="modal fade" id="ocrModal" tabindex="-1" aria-labelledby="ocrModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="ocrModalLabel">OCR Content</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="ocrLoadingSpinner" class="text-center py-3">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading OCR content...</p>
+                </div>
+                <div id="ocrContent" style="display: none;">
+                    <div class="form-group">
+                        <label for="ocrText" class="form-label">Extracted Text:</label>
+                        <textarea id="ocrText" class="form-control" rows="15" readonly style="font-family: 'Courier New', monospace; font-size: 0.9em;"></textarea>
+                    </div>
+                    <div class="mt-3">
+                        <button class="btn btn-outline-primary btn-sm" onclick="copyOCRText()">
+                            <i class="fas fa-copy"></i> Copy Text
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="downloadOCRText()">
+                            <i class="fas fa-download"></i> Download as Text
+                        </button>
+                    </div>
+                </div>
+                <div id="ocrError" style="display: none;" class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span id="ocrErrorMessage">Failed to load OCR content.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Document Details Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1" aria-labelledby="detailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detailsModalLabel">Document Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="detailsLoadingSpinner" class="text-center py-3">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading document details...</p>
+                </div>
+                <div id="detailsContent" style="display: none;">
+                    <!-- Document details will be populated here -->
+                </div>
+                <div id="detailsError" style="display: none;" class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span id="detailsErrorMessage">Failed to load document details.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+let currentOCRText = '';
+
 function refreshDocuments() {
     location.reload();
 }
@@ -218,10 +288,138 @@ function showBulkActions() {
     alert('Bulk actions feature coming soon!');
 }
 
+function showOCRContent(documentId) {
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('ocrModal'));
+    modal.show();
+    
+    // Reset modal state
+    document.getElementById('ocrLoadingSpinner').style.display = 'block';
+    document.getElementById('ocrContent').style.display = 'none';
+    document.getElementById('ocrError').style.display = 'none';
+    document.getElementById('ocrText').value = '';
+    
+    // Fetch OCR content
+    fetch(`/api/documents/${documentId}/ocr`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('ocrLoadingSpinner').style.display = 'none';
+            
+            if (data.success) {
+                currentOCRText = data.ocr_content || 'No OCR content available for this document.';
+                document.getElementById('ocrText').value = currentOCRText;
+                document.getElementById('ocrContent').style.display = 'block';
+            } else {
+                document.getElementById('ocrErrorMessage').textContent = data.error || 'Failed to load OCR content.';
+                document.getElementById('ocrError').style.display = 'block';
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching OCR content:', error);
+            document.getElementById('ocrLoadingSpinner').style.display = 'none';
+            document.getElementById('ocrErrorMessage').textContent = 'Network error while fetching OCR content.';
+            document.getElementById('ocrError').style.display = 'block';
+        });
+}
+
+function copyOCRText() {
+    const textarea = document.getElementById('ocrText');
+    textarea.select();
+    document.execCommand('copy');
+    
+    // Show feedback
+    const button = event.target.closest('button');
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+    button.classList.remove('btn-outline-primary');
+    button.classList.add('btn-success');
+    
+    setTimeout(() => {
+        button.innerHTML = originalText;
+        button.classList.remove('btn-success');
+        button.classList.add('btn-outline-primary');
+    }, 2000);
+}
+
+function downloadOCRText() {
+    if (!currentOCRText) return;
+    
+    const blob = new Blob([currentOCRText], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `document_ocr_${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
+
 function showDocumentDetails(documentId) {
-    // In a real implementation, this could show a modal with document details
-    // For now, just show a simple alert
-    alert(`Document details for document ID: ${documentId}\n\nThis feature would show detailed information about the document, including metadata, content preview, and processing history.`);
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
+    modal.show();
+    
+    // Reset modal state
+    document.getElementById('detailsLoadingSpinner').style.display = 'block';
+    document.getElementById('detailsContent').style.display = 'none';
+    document.getElementById('detailsError').style.display = 'none';
+    
+    // Fetch document details
+    fetch(`/api/documents/${documentId}/details`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('detailsLoadingSpinner').style.display = 'none';
+            
+            if (data.success) {
+                displayDocumentDetails(data.document);
+                document.getElementById('detailsContent').style.display = 'block';
+            } else {
+                document.getElementById('detailsErrorMessage').textContent = data.error || 'Failed to load document details.';
+                document.getElementById('detailsError').style.display = 'block';
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching document details:', error);
+            document.getElementById('detailsLoadingSpinner').style.display = 'none';
+            document.getElementById('detailsErrorMessage').textContent = 'Network error while fetching document details.';
+            document.getElementById('detailsError').style.display = 'block';
+        });
+}
+
+function displayDocumentDetails(document) {
+    const content = document.getElementById('detailsContent');
+    content.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Basic Information</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>Title:</strong></td><td>${document.title || 'N/A'}</td></tr>
+                    <tr><td><strong>Original Filename:</strong></td><td>${document.original_file_name || 'N/A'}</td></tr>
+                    <tr><td><strong>Correspondent:</strong></td><td>${document.correspondent_name || 'None'}</td></tr>
+                    <tr><td><strong>Document Type:</strong></td><td>${document.document_type_name || 'None'}</td></tr>
+                    <tr><td><strong>Created:</strong></td><td>${document.created_formatted || document.created || 'N/A'}</td></tr>
+                    <tr><td><strong>Modified:</strong></td><td>${document.modified || 'N/A'}</td></tr>
+                    <tr><td><strong>File Size:</strong></td><td>${document.archive_size ? (document.archive_size / 1024).toFixed(1) + ' KB' : 'N/A'}</td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6>Tags</h6>
+                <div class="mb-3">
+                    ${document.tag_names && document.tag_names.length > 0 
+                        ? document.tag_names.map(tag => `<span class="badge bg-secondary me-1">${tag}</span>`).join('')
+                        : '<span class="text-muted">No tags</span>'}
+                </div>
+                
+                <h6>Actions</h6>
+                <div class="d-grid gap-2">
+                    ${document.preview_url ? `<a href="${document.preview_url}" target="_blank" class="btn btn-outline-primary btn-sm"><i class="fas fa-eye"></i> View Document</a>` : ''}
+                    ${document.download_url ? `<a href="${document.download_url}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-download"></i> Download</a>` : ''}
+                    <button class="btn btn-outline-success btn-sm" onclick="showOCRContent('${document.id}')"><i class="fas fa-search-plus"></i> View OCR Content</button>
+                </div>
+            </div>
+        </div>
+    `;
 }
 </script>
 {% endblock %}

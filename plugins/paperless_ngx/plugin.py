@@ -439,7 +439,7 @@ class PaperlessNGXPlugin(BasePlugin):
     
     def get_document_preview_url(self, doc_id: int) -> str:
         """Get preview URL for a document (uses external hostname for browser access)"""
-        return f"{self.get_hostname_url()}/documents/{doc_id}/preview/"
+        return f"{self.get_hostname_url()}/documents/{doc_id}/"
     
     def upload_document(self, file_path: str, title: str = None, correspondent: str = None, 
                        document_type: str = None, tags: List[str] = None) -> Dict[str, Any]:
