@@ -149,7 +149,7 @@ The plugin includes robust error handling for:
 - Invalid document IDs
 - Missing or corrupted documents
 
-## Requirements
+## Requirements-
 
 - Paperless-NGX instance (v1.10.0 or later recommended)
 - Valid API token with read permissions
