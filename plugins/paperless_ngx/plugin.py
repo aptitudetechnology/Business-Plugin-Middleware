@@ -474,6 +474,15 @@ class PaperlessNGXPlugin(BasePlugin):
             self.logger.error(f"Failed to fetch document content for {doc_id}: {str(e)}")
             raise PluginError(f"Failed to fetch document content: {str(e)}")
     
+    def get_document_raw_content(self, doc_id: int) -> str:
+        """Get raw OCR content of a document (unprocessed)"""
+        try:
+            response = self._make_request('GET', f'/api/documents/{doc_id}/content/')
+            return response.text
+        except Exception as e:
+            self.logger.error(f"Failed to fetch raw document content for {doc_id}: {str(e)}")
+            raise PluginError(f"Failed to fetch raw document content: {str(e)}")
+    
     def _extract_text_from_html(self, html_content: str) -> str:
         """Extract plain text from HTML content"""
         try:
