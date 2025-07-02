@@ -124,14 +124,13 @@ config:
 .PHONY: test-plugins
 test-plugins:
 	@echo "🔌 Testing plugin connectivity..."
-	docker-compose -f $(COMPOSE_FILE) exec middleware python -c "
-import sys; sys.path.append('/app')
-from core.plugin_manager import PluginManager
-from config.settings import load_config
-config = load_config()
-pm = PluginManager(config)
-print('Discovered plugins:', pm.discover_plugins())
-" || echo "❌ Failed to test plugins"
+	@docker-compose -f $(COMPOSE_FILE) exec middleware python -c "\
+import sys; sys.path.append('/app'); \
+from core.plugin_manager import PluginManager; \
+from config.settings import load_config; \
+config = load_config(); \
+pm = PluginManager(config); \
+print('Discovered plugins:', pm.discover_plugins())" || echo "❌ Failed to test plugins"
 
 # Setup and initialization
 .PHONY: init
