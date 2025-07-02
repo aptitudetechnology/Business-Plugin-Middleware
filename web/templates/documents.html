@@ -124,6 +124,9 @@
                                                 <button class="btn btn-outline-success" title="View OCR Content" onclick="showOCRContent('{{ document.id }}')">
                                                     <i class="fas fa-search-plus"></i>
                                                 </button>
+                                                <button class="btn btn-outline-warning btn-sm" title="View Raw OCR" onclick="showRawOCRContent('{{ document.id }}')">
+                                                    <i class="fas fa-code"></i>
+                                                </button>
                                                 <button class="btn btn-outline-info" title="Details" onclick="showDocumentDetails('{{ document.id }}')">
                                                     <i class="fas fa-info-circle"></i>
                                                 </button>
@@ -228,17 +231,52 @@
                     <p class="mt-2">Loading OCR content...</p>
                 </div>
                 <div id="ocrContent" style="display: none;">
-                    <div class="form-group">
-                        <label for="ocrText" class="form-label">Extracted Text:</label>
-                        <textarea id="ocrText" class="form-control" rows="15" readonly style="font-family: 'Courier New', monospace; font-size: 0.9em;"></textarea>
-                    </div>
-                    <div class="mt-3">
-                        <button class="btn btn-outline-primary btn-sm" onclick="copyOCRText()">
-                            <i class="fas fa-copy"></i> Copy Text
-                        </button>
-                        <button class="btn btn-outline-secondary btn-sm" onclick="downloadOCRText()">
-                            <i class="fas fa-download"></i> Download as Text
-                        </button>
+                    <ul class="nav nav-tabs" id="ocrTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="processed-tab" data-bs-toggle="tab" data-bs-target="#processed-content" type="button" role="tab">
+                                <i class="fas fa-align-left"></i> Processed Text
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="raw-tab" data-bs-toggle="tab" data-bs-target="#raw-content" type="button" role="tab">
+                                <i class="fas fa-code"></i> Raw Content
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content mt-3" id="ocrTabContent">
+                        <div class="tab-pane fade show active" id="processed-content" role="tabpanel">
+                            <div class="form-group">
+                                <label for="ocrText" class="form-label">Extracted Text:</label>
+                                <textarea id="ocrText" class="form-control" rows="15" readonly style="font-family: 'Courier New', monospace; font-size: 0.9em;"></textarea>
+                            </div>
+                            <div class="mt-3">
+                                <button class="btn btn-outline-primary btn-sm" onclick="copyOCRText('processed')">
+                                    <i class="fas fa-copy"></i> Copy Text
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm" onclick="downloadOCRText('processed')">
+                                    <i class="fas fa-download"></i> Download as Text
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="tab-pane fade" id="raw-content" role="tabpanel">
+                            <div class="form-group">
+                                <label for="rawOcrText" class="form-label">Raw OCR Content (HTML/SVG):</label>
+                                <textarea id="rawOcrText" class="form-control" rows="15" readonly style="font-family: 'Courier New', monospace; font-size: 0.8em;"></textarea>
+                            </div>
+                            <div class="mt-3">
+                                <button class="btn btn-outline-primary btn-sm" onclick="copyOCRText('raw')">
+                                    <i class="fas fa-copy"></i> Copy Raw Content
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm" onclick="downloadOCRText('raw')">
+                                    <i class="fas fa-download"></i> Download as HTML
+                                </button>
+                                <button class="btn btn-outline-info btn-sm" onclick="previewRawContent()">
+                                    <i class="fas fa-eye"></i> Preview HTML
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div id="ocrError" style="display: none;" class="alert alert-danger">
@@ -279,6 +317,8 @@
 
 <script>
 let currentOCRText = '';
+let currentRawOCRText = '';
+let currentDocumentId = null;
 
 function refreshDocuments() {
     location.reload();
@@ -289,6 +329,8 @@ function showBulkActions() {
 }
 
 function showOCRContent(documentId) {
+    currentDocumentId = documentId;
+    
     // Show modal
     const modal = new bootstrap.Modal(document.getElementById('ocrModal'));
     modal.show();
@@ -298,32 +340,56 @@ function showOCRContent(documentId) {
     document.getElementById('ocrContent').style.display = 'none';
     document.getElementById('ocrError').style.display = 'none';
     document.getElementById('ocrText').value = '';
+    document.getElementById('rawOcrText').value = '';
     
-    // Fetch OCR content
-    fetch(`/api/documents/${documentId}/ocr`)
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById('ocrLoadingSpinner').style.display = 'none';
-            
-            if (data.success) {
-                currentOCRText = data.ocr_content || 'No OCR content available for this document.';
-                document.getElementById('ocrText').value = currentOCRText;
-                document.getElementById('ocrContent').style.display = 'block';
-            } else {
-                document.getElementById('ocrErrorMessage').textContent = data.error || 'Failed to load OCR content.';
-                document.getElementById('ocrError').style.display = 'block';
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching OCR content:', error);
-            document.getElementById('ocrLoadingSpinner').style.display = 'none';
-            document.getElementById('ocrErrorMessage').textContent = 'Network error while fetching OCR content.';
-            document.getElementById('ocrError').style.display = 'block';
-        });
+    // Switch to processed tab
+    const processedTab = new bootstrap.Tab(document.getElementById('processed-tab'));
+    processedTab.show();
+    
+    // Fetch both processed and raw OCR content
+    Promise.all([
+        fetch(`/api/documents/${documentId}/ocr`).then(r => r.json()),
+        fetch(`/api/documents/${documentId}/ocr/raw`).then(r => r.json())
+    ]).then(([processedData, rawData]) => {
+        document.getElementById('ocrLoadingSpinner').style.display = 'none';
+        
+        if (processedData.success) {
+            currentOCRText = processedData.ocr_content || 'No processed OCR content available.';
+            document.getElementById('ocrText').value = currentOCRText;
+        } else {
+            document.getElementById('ocrText').value = 'Error loading processed content: ' + (processedData.error || 'Unknown error');
+        }
+        
+        if (rawData.success) {
+            currentRawOCRText = rawData.raw_content || 'No raw OCR content available.';
+            document.getElementById('rawOcrText').value = currentRawOCRText;
+        } else {
+            document.getElementById('rawOcrText').value = 'Error loading raw content: ' + (rawData.error || 'Unknown error');
+        }
+        
+        document.getElementById('ocrContent').style.display = 'block';
+        
+    }).catch(error => {
+        console.error('Error fetching OCR content:', error);
+        document.getElementById('ocrLoadingSpinner').style.display = 'none';
+        document.getElementById('ocrErrorMessage').textContent = 'Network error while fetching OCR content.';
+        document.getElementById('ocrError').style.display = 'block';
+    });
 }
 
-function copyOCRText() {
-    const textarea = document.getElementById('ocrText');
+function showRawOCRContent(documentId) {
+    // Show the OCR modal and switch to raw tab
+    showOCRContent(documentId);
+    
+    // Wait a bit for the modal to load, then switch to raw tab
+    setTimeout(() => {
+        const rawTab = new bootstrap.Tab(document.getElementById('raw-tab'));
+        rawTab.show();
+    }, 500);
+}
+
+function copyOCRText(type) {
+    const textarea = document.getElementById(type === 'raw' ? 'rawOcrText' : 'ocrText');
     textarea.select();
     document.execCommand('copy');
     
@@ -341,18 +407,31 @@ function copyOCRText() {
     }, 2000);
 }
 
-function downloadOCRText() {
-    if (!currentOCRText) return;
+function downloadOCRText(type) {
+    const content = type === 'raw' ? currentRawOCRText : currentOCRText;
+    const extension = type === 'raw' ? 'html' : 'txt';
+    const mimeType = type === 'raw' ? 'text/html' : 'text/plain';
     
-    const blob = new Blob([currentOCRText], { type: 'text/plain' });
+    if (!content) return;
+    
+    const blob = new Blob([content], { type: mimeType });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `document_ocr_${new Date().toISOString().slice(0, 10)}.txt`;
+    a.download = `document_${currentDocumentId}_ocr_${type}_${new Date().toISOString().slice(0, 10)}.${extension}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
+}
+
+function previewRawContent() {
+    if (!currentRawOCRText) return;
+    
+    // Open raw HTML content in a new window for preview
+    const newWindow = window.open('', '_blank');
+    newWindow.document.write(currentRawOCRText);
+    newWindow.document.close();
 }
 
 function showDocumentDetails(documentId) {
@@ -416,6 +495,7 @@ function displayDocumentDetails(document) {
                     ${document.preview_url ? `<a href="${document.preview_url}" target="_blank" class="btn btn-outline-primary btn-sm"><i class="fas fa-eye"></i> View Document</a>` : ''}
                     ${document.download_url ? `<a href="${document.download_url}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-download"></i> Download</a>` : ''}
                     <button class="btn btn-outline-success btn-sm" onclick="showOCRContent('${document.id}')"><i class="fas fa-search-plus"></i> View OCR Content</button>
+                    <button class="btn btn-outline-warning btn-sm" onclick="showRawOCRContent('${document.id}')"><i class="fas fa-code"></i> Raw OCR</button>
                 </div>
             </div>
         </div>

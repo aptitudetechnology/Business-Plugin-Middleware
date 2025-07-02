@@ -1077,4 +1077,29 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             logger.error(f"Failed to get document details for document {doc_id}: {e}")
             return jsonify({'error': str(e)}), 500
 
+    @api.route('/documents/<int:doc_id>/ocr/raw', methods=['GET'])
+    def get_document_ocr_raw(doc_id):
+        """Get raw OCR content for a document (unprocessed HTML/SVG)"""
+        try:
+            if not plugin_manager:
+                return jsonify({'error': 'Plugin manager not available'}), 500
+            
+            # Get Paperless-NGX plugin
+            paperless_plugin = plugin_manager.get_plugin('paperless_ngx')
+            if not paperless_plugin:
+                return jsonify({'error': 'Paperless-NGX plugin not available'}), 404
+            
+            # Get raw OCR content
+            raw_content = paperless_plugin.get_document_raw_content(doc_id)
+            
+            return jsonify({
+                'success': True,
+                'document_id': doc_id,
+                'raw_content': raw_content
+            })
+            
+        except Exception as e:
+            logger.error(f"Failed to get raw OCR content for document {doc_id}: {e}")
+            return jsonify({'error': str(e)}), 500
+
     return api
