@@ -425,13 +425,84 @@ class PaperlessNGXPlugin(BasePlugin):
             raise PluginError(f"Failed to fetch document {doc_id}: {str(e)}")
     
     def get_document_content(self, doc_id: int) -> str:
-        """Get OCR content of a document"""
+        """Get OCR content of a document (plain text)"""
         try:
-            response = self._make_request('GET', f'/api/documents/{doc_id}/content/')
-            return response.text
+            # First, try to get the document metadata to see if it has content
+            doc_response = self._make_request('GET', f'/api/documents/{doc_id}/')
+            doc_data = doc_response.json()
+            
+            # If the document has 'content' field, use that
+            if 'content' in doc_data and doc_data['content']:
+                content = doc_data['content'].strip()
+                if content and not content.startswith('<'):
+                    return content
+            
+            # Try the download endpoint and extract text if it's a text-based format
+            try:
+                response = self._make_request('GET', f'/api/documents/{doc_id}/download/')
+                content_type = response.headers.get('content-type', '').lower()
+                
+                # If it's already plain text, return it
+                if 'text/plain' in content_type:
+                    return response.text
+                
+                # If it's HTML, try to extract text content
+                if 'text/html' in content_type:
+                    return self._extract_text_from_html(response.text)
+                    
+            except Exception as e:
+                self.logger.warning(f"Failed to get document via download endpoint: {e}")
+            
+            # Fallback: try the content endpoint but process the response
+            try:
+                response = self._make_request('GET', f'/api/documents/{doc_id}/content/')
+                content = response.text
+                
+                # If it's HTML/SVG content, try to extract text
+                if content.strip().startswith('<'):
+                    return self._extract_text_from_html(content)
+                
+                return content
+                
+            except Exception as e:
+                self.logger.warning(f"Failed to get document content via content endpoint: {e}")
+            
+            # Last resort: return a message indicating no text content is available
+            return "No plain text content available for this document. The document may contain only images or the OCR processing may not have completed yet."
+            
         except Exception as e:
             self.logger.error(f"Failed to fetch document content for {doc_id}: {str(e)}")
             raise PluginError(f"Failed to fetch document content: {str(e)}")
+    
+    def _extract_text_from_html(self, html_content: str) -> str:
+        """Extract plain text from HTML content"""
+        try:
+            # Simple HTML tag removal - in production you might want to use BeautifulSoup
+            import re
+            
+            # Remove script and style elements
+            html_content = re.sub(r'<script[^>]*>.*?</script>', '', html_content, flags=re.DOTALL | re.IGNORECASE)
+            html_content = re.sub(r'<style[^>]*>.*?</style>', '', html_content, flags=re.DOTALL | re.IGNORECASE)
+            
+            # Remove SVG elements (which might contain positioning data but not readable text)
+            html_content = re.sub(r'<svg[^>]*>.*?</svg>', '', html_content, flags=re.DOTALL | re.IGNORECASE)
+            
+            # Remove all HTML tags
+            text = re.sub(r'<[^>]+>', '', html_content)
+            
+            # Decode HTML entities
+            import html
+            text = html.unescape(text)
+            
+            # Clean up whitespace
+            lines = [line.strip() for line in text.split('\n')]
+            lines = [line for line in lines if line]
+            
+            return '\n'.join(lines)
+            
+        except Exception as e:
+            self.logger.warning(f"Failed to extract text from HTML: {e}")
+            return html_content
     
     def get_document_download_url(self, doc_id: int) -> str:
         """Get download URL for a document (uses external hostname for browser access)"""
