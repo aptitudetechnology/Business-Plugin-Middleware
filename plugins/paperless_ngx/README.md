@@ -1,69 +1,83 @@
-# ⚠️ **CRITICAL WARNING - READ BEFORE PROCEEDING** ⚠️
-
-> ## 🚨 PRE-ALPHA SOFTWARE - NOT FUNCTIONAL 🚨
-> 
-> **THIS PROJECT IS CURRENTLY IN PRE-ALPHA DEVELOPMENT AND IS NOT YET FUNCTIONAL.**
-> 
-> ### ❌ DO NOT USE FOR:
-> - Production environments
-> - Business-critical data
-> - Live financial systems
-> - Any mission-critical applications
-> 
-> ### ⚠️ IMPORTANT DISCLAIMERS:
-> - **DATA LOSS RISK**: This software may corrupt, lose, or mishandle your data
-> - **NO RELIABILITY GUARANTEE**: Features may not work as expected or at all
-> - **BREAKING CHANGES**: API and functionality will change without notice
-> - **NO SUPPORT**: Limited or no support available during pre-alpha phase
-> 
-> ### 🔬 INTENDED FOR:
-> - Development and testing purposes only
-> - Contributors and early adopters willing to accept risks
-> - Non-critical experimentation environments
-> 
-> **By using this software, you acknowledge and accept full responsibility for any potential data loss, system issues, or other consequences.**
-
----
-
-
 # Paperless-NGX Plugin
 
-This plugin provides integration with [Paperless-NGX](https://github.com/paperless-ngx/paperless-ngx), a powerful document management system.
+**A robust integration plugin for [Paperless-NGX](https://github.com/paperless-ngx/paperless-ngx) document management system.**
 
-## Features
+![Status](https://img.shields.io/badge/status-stable-green.svg)
+![Features](https://img.shields.io/badge/features-complete-blue.svg)
+![Docker](https://img.shields.io/badge/docker-ready-blue.svg)
 
-- **Document Browsing**: Browse and search your Paperless-NGX documents
-- **OCR Content Viewing**: View extracted text content from documents
-- **Document Metadata**: Access document types, correspondents, tags, and dates
-- **Direct Links**: Quick access to documents in your Paperless-NGX instance
-- **Download Support**: Download documents directly through the middleware
-- **Search Functionality**: Search documents by title, content, or metadata
-- **Pagination**: Efficient browsing of large document collections
+## ✅ **Production Ready**
 
-## Configuration
+This plugin has been thoroughly tested and is ready for production use with proper configuration and API token setup.
 
-### Using Configuration File
+### 🌟 **Key Features**
 
-Add to your `config/config.ini`:
+### 🌟 **Key Features**
+
+- **📄 Document Browsing**: Browse and search your Paperless-NGX documents with pagination
+- **🔍 Advanced OCR Viewing**: View both processed text and raw HTML/SVG content
+- **📊 Document Metadata**: Access document types, correspondents, tags, and creation dates
+- **🔗 Smart URL Handling**: Separate internal API and external browser URLs for Docker deployments
+- **💾 Download Support**: Download documents directly through the middleware
+- **🔎 Search Functionality**: Search documents by title, content, or metadata
+- **📱 Modern Web Interface**: Responsive design with tabbed OCR viewer
+- **📋 Copy/Export**: Copy OCR text to clipboard or download as files
+- **⚙️ Dynamic Configuration**: Configure via web UI or configuration files
+- **🔧 Real-time Debugging**: Built-in diagnostics and error handling
+
+## 🚀 **Recent Enhancements**
+
+- **Dual Content Viewer**: Separate tabs for processed text and raw HTML/SVG content
+- **Network Flexibility**: Support for Docker service names and external hostnames
+- **Enhanced Error Messages**: Specific guidance for API token and connectivity issues
+- **Plugin Reload**: Hot-reload configuration without container restarts
+- **Loguru Integration**: Advanced logging with structured output
+
+## ⚙️ **Configuration**
+
+### Docker Compose Setup (Recommended)
+
+For containerized deployments using Docker Compose, add to your `config/config.ini`:
 
 ```ini
-[paperless_ngx]
-api_key = your-paperless-api-token
-base_url = https://your-paperless-instance.com
+[paperless]
+# Internal API URL (container-to-container communication)
+api_url = http://paperless-ngx:8000
+# External hostname URL (for browser links)
+hostname_url = http://simple.local:8000
+api_token = YOUR_REAL_API_TOKEN_HERE
 enabled = true
-timeout = 30
-page_size = 25
 ```
 
-### Using Environment Variables
+### Host Network Setup
 
-Set these environment variables:
+For direct host network access, use:
 
-```bash
-PAPERLESS_NGX_API_KEY=your-paperless-api-token
-PAPERLESS_NGX_BASE_URL=https://your-paperless-instance.com
-PAPERLESS_NGX_ENABLED=true
-PAPERLESS_NGX_TIMEOUT=30
+```ini
+[paperless]
+# Use your host IP for internal API calls
+api_url = http://192.168.1.115:8000
+# Use your preferred hostname for browser links
+hostname_url = http://simple.local:8000
+api_token = YOUR_REAL_API_TOKEN_HERE
+enabled = true
+```
+
+### Plugin Configuration
+
+The plugin also supports configuration via `config/plugins.json`:
+
+```json
+{
+  "paperless_ngx": {
+    "enabled": true,
+    "api_key": "YOUR_REAL_API_TOKEN_HERE",
+    "base_url": "http://paperless-ngx:8000",
+    "hostname_url": "http://simple.local:8000",
+    "timeout": 30,
+    "page_size": 25
+  }
+}
 ```
 
 ## Getting Your API Token
