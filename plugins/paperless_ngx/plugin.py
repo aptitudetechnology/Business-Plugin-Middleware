@@ -31,6 +31,7 @@ class PaperlessNGXPlugin(BasePlugin):
         
         # Configuration will be validated in initialize()
         self.base_url = None
+        self.hostname_url = None  # For browser/external links
         self.api_key = None
         self.timeout = 30
         self.page_size = 25
@@ -58,6 +59,7 @@ class PaperlessNGXPlugin(BasePlugin):
                 if paperless_config:
                     self.config = {
                         'base_url': paperless_config.get('api_url', '').rstrip('/'),
+                        'hostname_url': paperless_config.get('hostname_url', paperless_config.get('api_url', '')).rstrip('/'),
                         'api_key': paperless_config.get('api_token', ''),
                         'timeout': 30,
                         'page_size': 25,
@@ -67,13 +69,15 @@ class PaperlessNGXPlugin(BasePlugin):
             # Setup configuration from config property
             config = self.config or {}
             self.base_url = config.get('base_url', '').rstrip('/')
+            self.hostname_url = config.get('hostname_url', self.base_url).rstrip('/')
             self.api_key = config.get('api_key', '')
             self.timeout = config.get('timeout', 30)
             self.page_size = config.get('page_size', 25)
             self.verify_ssl = config.get('verify_ssl', True)
             
             # DEBUG: Log the final configuration being used
-            self.logger.info(f"Final base_url: {self.base_url}")
+            self.logger.info(f"Final API URL (internal): {self.base_url}")
+            self.logger.info(f"Final hostname URL (external): {self.hostname_url}")
             self.logger.info(f"Final api_key: {self.api_key[:10]}..." if self.api_key else "No API key")
             
             # Always setup API client (even for placeholder configs)
@@ -202,11 +206,19 @@ class PaperlessNGXPlugin(BasePlugin):
             </div>
             
             <div class="mb-3">
-                <label for="config_base_url" class="form-label">Base URL</label>
+                <label for="config_base_url" class="form-label">API URL (Internal)</label>
                 <input type="url" class="form-control" id="config_base_url" name="base_url" 
                        value="{self.config.get('base_url', '')}" 
-                       placeholder="https://your-paperless-instance.com">
-                <div class="form-text">The base URL of your Paperless-NGX instance</div>
+                       placeholder="http://paperless-ngx:8000">
+                <div class="form-text">Internal API URL for Docker communication (e.g., http://paperless-ngx:8000)</div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="config_hostname_url" class="form-label">Hostname URL (External)</label>
+                <input type="url" class="form-control" id="config_hostname_url" name="hostname_url" 
+                       value="{self.config.get('hostname_url', '')}" 
+                       placeholder="http://simple.local:8000">
+                <div class="form-text">External hostname for browser links (e.g., http://your-server:8000). Leave blank to use API URL.</div>
             </div>
             
             <div class="mb-3">
@@ -422,12 +434,12 @@ class PaperlessNGXPlugin(BasePlugin):
             raise PluginError(f"Failed to fetch document content: {str(e)}")
     
     def get_document_download_url(self, doc_id: int) -> str:
-        """Get download URL for a document"""
-        return f"{self.base_url}/api/documents/{doc_id}/download/"
+        """Get download URL for a document (uses external hostname for browser access)"""
+        return f"{self.get_hostname_url()}/api/documents/{doc_id}/download/"
     
     def get_document_preview_url(self, doc_id: int) -> str:
-        """Get preview URL for a document"""
-        return f"{self.base_url}/documents/{doc_id}/preview/"
+        """Get preview URL for a document (uses external hostname for browser access)"""
+        return f"{self.get_hostname_url()}/documents/{doc_id}/preview/"
     
     def upload_document(self, file_path: str, title: str = None, correspondent: str = None, 
                        document_type: str = None, tags: List[str] = None) -> Dict[str, Any]:
@@ -716,12 +728,12 @@ class PaperlessNGXPlugin(BasePlugin):
             raise PluginError(f"Failed to fetch document content: {str(e)}")
     
     def get_document_download_url_v2(self, doc_id: int) -> str:
-        """Get download URL for a document (v2)"""
-        return f"{self.base_url}/api/documents/{doc_id}/download/"
+        """Get download URL for a document (v2) (uses external hostname for browser access)"""
+        return f"{self.get_hostname_url()}/api/documents/{doc_id}/download/"
     
     def get_document_preview_url_v2(self, doc_id: int) -> str:
-        """Get preview URL for a document (v2)"""
-        return f"{self.base_url}/documents/{doc_id}/preview/"
+        """Get preview URL for a document (v2) (uses external hostname for browser access)"""
+        return f"{self.get_hostname_url()}/documents/{doc_id}/preview/"
     
     def upload_document_v2(self, file_path: str, title: str = None, correspondent: str = None, 
                        document_type: str = None, tags: List[str] = None) -> Dict[str, Any]:
@@ -908,6 +920,22 @@ class PaperlessNGXPlugin(BasePlugin):
                 'description': 'Get document details (API)'
             }
         ]
+    
+    def get_api_url(self) -> str:
+        """Get the internal API URL for making requests"""
+        return self.base_url
+    
+    def get_hostname_url(self) -> str:
+        """Get the external hostname URL for browser links"""
+        return self.hostname_url or self.base_url
+    
+    def get_document_url(self, document_id: int) -> str:
+        """Get external URL for viewing a document in browser"""
+        return f"{self.get_hostname_url()}/documents/{document_id}"
+    
+    def get_admin_url(self) -> str:
+        """Get external URL for Paperless-NGX admin interface"""
+        return f"{self.get_hostname_url()}/admin/"
 
 
 class PaperlessNGXProcessingPlugin(ProcessingPlugin):
