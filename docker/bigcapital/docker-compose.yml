@@ -40,8 +40,9 @@ services:
       - DATABASE_URL=mysql://bigcapital:bigcapital_secure_password@bigcapital-mariadb:3306/bigcapital
       
       # MongoDB configuration
-      - MONGODB_URI=mongodb://bigcapital-mongo:27017/bigcapital
-      - MONGO_URI=mongodb://bigcapital-mongo:27017/bigcapital
+      # Added ?authSource=admin to make the connection string more explicit for older drivers
+      - MONGODB_URI=mongodb://bigcapital-mongo:27017/bigcapital?authSource=admin
+      - MONGO_URI=mongodb://bigcapital-mongo:27017/bigcapital?authSource=admin
       
       # Redis configuration
       - REDIS_HOST=bigcapital-redis
