@@ -164,7 +164,8 @@ class PluginManager:
         return True
     
     def _categorize_plugin(self, plugin: BasePlugin):
-        """Categorize plugin by type"""
+        """Categorize plugin by type and capabilities"""
+        # Check for specific plugin types
         if isinstance(plugin, WebPlugin):
             self._web_plugins.append(plugin)
         if isinstance(plugin, APIPlugin):
@@ -173,6 +174,17 @@ class PluginManager:
             self._processing_plugins.append(plugin)
         if isinstance(plugin, IntegrationPlugin):
             self._integration_plugins.append(plugin)
+            
+        # Also check if the plugin provides web or API interfaces (even if not explicitly WebPlugin/APIPlugin)
+        if hasattr(plugin, 'get_blueprint') and callable(getattr(plugin, 'get_blueprint')):
+            # If plugin provides a blueprint but isn't already in web_plugins, add it
+            if plugin not in self._web_plugins:
+                self._web_plugins.append(plugin)
+                
+        if hasattr(plugin, 'get_api_blueprint') and callable(getattr(plugin, 'get_api_blueprint')):
+            # If plugin provides an API blueprint but isn't already in api_plugins, add it
+            if plugin not in self._api_plugins:
+                self._api_plugins.append(plugin)
     
     def load_all_plugins(self) -> Dict[str, bool]:
         """
@@ -216,20 +228,38 @@ class PluginManager:
         return list(self._plugin_classes.keys())
     
     def register_blueprints(self, app: Flask):
-        """Register all plugin blueprints with the Flask app"""
+        """Register all plugin blueprints with the Flask app (fault-tolerant)"""
+        registered_count = 0
+        
         # Register web plugin blueprints
         for plugin in self._web_plugins:
-            blueprint = plugin.get_blueprint()
-            if blueprint:
-                app.register_blueprint(blueprint, url_prefix=f'/plugins/{plugin.name}')
-                logger.info(f"Registered web blueprint for plugin: {plugin.name}")
+            try:
+                blueprint = plugin.get_blueprint()
+                if blueprint:
+                    app.register_blueprint(blueprint, url_prefix=f'/plugins/{plugin.name}')
+                    logger.info(f"Registered web blueprint for plugin: {plugin.name}")
+                    registered_count += 1
+                else:
+                    logger.warning(f"Plugin {plugin.name} returned no web blueprint")
+            except Exception as e:
+                logger.error(f"Failed to register web blueprint for plugin {plugin.name}: {e}")
+                # Don't crash the app, just log the error and continue
         
         # Register API plugin blueprints
         for plugin in self._api_plugins:
-            api_blueprint = plugin.get_api_blueprint()
-            if api_blueprint:
-                app.register_blueprint(api_blueprint, url_prefix=f'/api/plugins/{plugin.name}')
-                logger.info(f"Registered API blueprint for plugin: {plugin.name}")
+            try:
+                api_blueprint = plugin.get_api_blueprint()
+                if api_blueprint:
+                    app.register_blueprint(api_blueprint, url_prefix=f'/api/plugins/{plugin.name}')
+                    logger.info(f"Registered API blueprint for plugin: {plugin.name}")
+                    registered_count += 1
+                else:
+                    logger.warning(f"Plugin {plugin.name} returned no API blueprint")
+            except Exception as e:
+                logger.error(f"Failed to register API blueprint for plugin {plugin.name}: {e}")
+                # Don't crash the app, just log the error and continue
+        
+        logger.info(f"Successfully registered {registered_count} plugin blueprints")
     
     def get_plugin(self, plugin_name: str) -> Optional[BasePlugin]:
         """Get a plugin instance by name"""
