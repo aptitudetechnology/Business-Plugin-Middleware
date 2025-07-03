@@ -109,33 +109,28 @@ def fix_plugin_routes(routes_path: str):
                 
                 for key, value in config_data.items():
                     if key in ['api_key', 'password', 'secret']:
-                        form_html += f'''
-                        <div class="mb-3">
+                        form_html += f'''<div class="mb-3">
                             <label for="{key}" class="form-label">{key.replace('_', ' ').title()}</label>
                             <input type="password" class="form-control" id="{key}" name="{key}" 
                                    placeholder="Enter {key.replace('_', ' ')}" required>
                         </div>'''
                     elif key == 'enabled':
-                        form_html += f'''
-                        <div class="mb-3 form-check">
+                        form_html += f'''<div class="mb-3 form-check">
                             <input type="checkbox" class="form-check-input" id="{key}" name="{key}" 
                                    {"checked" if value else ""}>
                             <label class="form-check-label" for="{key}">Enable Plugin</label>
                         </div>'''
                     else:
-                        form_html += f'''
-                        <div class="mb-3">
+                        form_html += f'''<div class="mb-3">
                             <label for="{key}" class="form-label">{key.replace('_', ' ').title()}</label>
                             <input type="text" class="form-control" id="{key}" name="{key}" 
                                    value="{value}" placeholder="{key.replace('_', ' ').title()}">
                         </div>'''
                 
-                form_html += '''
-                        <button type="submit" class="btn btn-primary">Save Configuration</button>
+                form_html += '''<button type="submit" class="btn btn-primary">Save Configuration</button>
                     </form>'''
                 
-                return f'''
-                <div class="container mt-4">
+                return f'''<div class="container mt-4">
                     <h2>{plugin_name.title()} Plugin Configuration</h2>
                     <div class="alert alert-warning">
                         <strong>Plugin Status:</strong> Not initialized (likely due to missing configuration)
