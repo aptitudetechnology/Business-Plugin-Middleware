@@ -787,6 +787,79 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
         except Exception as e:
             return f"Error: {str(e)}"
 
+    # BigCapital Plugin Routes
+    @web.route('/bigcapital')
+    def bigcapital_dashboard():
+        """BigCapital plugin dashboard"""
+        try:
+            if not plugin_manager:
+                return "Plugin manager not available", 500
+            
+            # Get BigCapital plugin
+            bigcapital_plugin = plugin_manager.get_plugin('bigcapital')
+            if not bigcapital_plugin:
+                return render_template('errors/plugin_error.html', 
+                                     plugin_name='BigCapital',
+                                     error='Plugin not found or not loaded')
+            
+            # Test connection
+            connected = bigcapital_plugin.test_connection()
+            
+            # Get organization info
+            org_info = None
+            stats = {}
+            recent_invoices = []
+            recent_expenses = []
+            pending_documents = []
+            
+            if connected and bigcapital_plugin.client:
+                try:
+                    # Get organization information
+                    org_info = bigcapital_plugin.client.get_organization_info()
+                    
+                    # Get statistics
+                    customers = bigcapital_plugin.client.get_customers(per_page=1000)
+                    vendors = bigcapital_plugin.client.get_vendors(per_page=1000)
+                    
+                    stats = {
+                        'total_customers': len(customers) if customers else 0,
+                        'total_vendors': len(vendors) if vendors else 0,
+                        'pending_invoices': 0,  # Would need specific API call
+                        'total_revenue': 0.0    # Would need specific API call
+                    }
+                    
+                    # Get recent transactions
+                    recent_invoices = bigcapital_plugin.client.get_recent_invoices(limit=5) or []
+                    recent_expenses = bigcapital_plugin.client.get_recent_expenses(limit=5) or []
+                    
+                    # Get pending documents from Paperless-NGX if available
+                    paperless_plugin = plugin_manager.get_plugin('paperless_ngx')
+                    if paperless_plugin and paperless_plugin.test_connection():
+                        try:
+                            # Get recent documents that might need syncing
+                            recent_docs = paperless_plugin.get_recent_documents(limit=10)
+                            if recent_docs:
+                                pending_documents = recent_docs.get('results', [])[:5]
+                        except Exception as e:
+                            logger.warning(f"Could not get pending documents: {e}")
+                    
+                except Exception as e:
+                    logger.error(f"Error getting BigCapital dashboard data: {e}")
+            
+            return render_template('bigcapital.html',
+                                 connected=connected,
+                                 org_info=org_info,
+                                 stats=stats,
+                                 recent_invoices=recent_invoices,
+                                 recent_expenses=recent_expenses,
+                                 pending_documents=pending_documents)
+                                 
+        except Exception as e:
+            logger.error(f"BigCapital dashboard error: {e}")
+            return render_template('errors/plugin_error.html', 
+                                 plugin_name='BigCapital',
+                                 error=str(e))
+
     return web
 
 
@@ -1195,80 +1268,8 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             logger.error(f"Failed to get debug info for plugin {plugin_name}: {e}")
             return jsonify({'error': str(e)}), 500
 
-    # BigCapital Plugin Routes
-    @web.route('/bigcapital')
-    def bigcapital_dashboard():
-        """BigCapital plugin dashboard"""
-        try:
-            if not plugin_manager:
-                return "Plugin manager not available", 500
-            
-            # Get BigCapital plugin
-            bigcapital_plugin = plugin_manager.get_plugin('bigcapital')
-            if not bigcapital_plugin:
-                return render_template('errors/plugin_error.html', 
-                                     plugin_name='BigCapital',
-                                     error='Plugin not found or not loaded')
-            
-            # Test connection
-            connected = bigcapital_plugin.test_connection()
-            
-            # Get organization info
-            org_info = None
-            stats = {}
-            recent_invoices = []
-            recent_expenses = []
-            pending_documents = []
-            
-            if connected and bigcapital_plugin.client:
-                try:
-                    # Get organization information
-                    org_info = bigcapital_plugin.client.get_organization_info()
-                    
-                    # Get statistics
-                    customers = bigcapital_plugin.client.get_customers(per_page=1000)
-                    vendors = bigcapital_plugin.client.get_vendors(per_page=1000)
-                    
-                    stats = {
-                        'total_customers': len(customers) if customers else 0,
-                        'total_vendors': len(vendors) if vendors else 0,
-                        'pending_invoices': 0,  # Would need specific API call
-                        'total_revenue': 0.0    # Would need specific API call
-                    }
-                    
-                    # Get recent transactions
-                    recent_invoices = bigcapital_plugin.client.get_recent_invoices(limit=5) or []
-                    recent_expenses = bigcapital_plugin.client.get_recent_expenses(limit=5) or []
-                    
-                    # Get pending documents from Paperless-NGX if available
-                    paperless_plugin = plugin_manager.get_plugin('paperless_ngx')
-                    if paperless_plugin and paperless_plugin.test_connection():
-                        try:
-                            # Get recent documents that might need syncing
-                            recent_docs = paperless_plugin.get_recent_documents(limit=10)
-                            if recent_docs:
-                                pending_documents = recent_docs.get('results', [])[:5]
-                        except Exception as e:
-                            logger.warning(f"Could not get pending documents: {e}")
-                    
-                except Exception as e:
-                    logger.error(f"Error getting BigCapital dashboard data: {e}")
-            
-            return render_template('bigcapital.html',
-                                 connected=connected,
-                                 org_info=org_info,
-                                 stats=stats,
-                                 recent_invoices=recent_invoices,
-                                 recent_expenses=recent_expenses,
-                                 pending_documents=pending_documents)
-                                 
-        except Exception as e:
-            logger.error(f"BigCapital dashboard error: {e}")
-            return render_template('errors/plugin_error.html', 
-                                 plugin_name='BigCapital',
-                                 error=str(e))
-    
-    @web.route('/api/bigcapital/status', methods=['GET'])
+    # BigCapital API Routes
+    @api.route('/bigcapital/status', methods=['GET'])
     def bigcapital_status():
         """Get BigCapital connection status"""
         try:
@@ -1298,7 +1299,7 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             logger.error(f"BigCapital status check error: {e}")
             return jsonify({'success': False, 'error': str(e)})
     
-    @web.route('/api/bigcapital/test-connection', methods=['POST'])
+    @api.route('/bigcapital/test-connection', methods=['POST'])
     def bigcapital_test_connection():
         """Test BigCapital API connection"""
         try:
@@ -1334,7 +1335,7 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             logger.error(f"BigCapital connection test error: {e}")
             return jsonify({'success': False, 'error': str(e)})
     
-    @web.route('/api/bigcapital/sync', methods=['POST'])
+    @api.route('/bigcapital/sync', methods=['POST'])
     def bigcapital_sync():
         """Perform BigCapital sync operation"""
         try:
@@ -1408,7 +1409,7 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             logger.error(f"BigCapital sync error: {e}")
             return jsonify({'success': False, 'error': str(e)})
     
-    @web.route('/api/bigcapital/sync-document', methods=['POST'])
+    @api.route('/bigcapital/sync-document', methods=['POST'])
     def bigcapital_sync_document():
         """Sync a specific document to BigCapital"""
         try:
