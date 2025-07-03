@@ -115,7 +115,7 @@ services:
     networks:
       - bigcapital_network
     volumes:
-      - bigcapital_redis:/data
+      - bigcapital_redis:/data # This uses the named volume
     ports:
       - "6380:6379"
     command: redis-server --requirepass bigcapital_redis_password --maxmemory 256mb --maxmemory-policy allkeys-lru
@@ -129,6 +129,8 @@ volumes:
   bigcapital_mariadb:
     driver: local
   bigcapital_mongo:
+    driver: local
+  bigcapital_redis: # <-- Added this missing declaration
     driver: local
   bigcapital_uploads:
     driver: local
