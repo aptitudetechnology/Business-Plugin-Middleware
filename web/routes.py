@@ -585,7 +585,28 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             if not plugin_manager:
                 return jsonify({'error': 'Plugin manager not available'}), 500
             
+            # First try to get initialized plugin
             plugin = plugin_manager.get_plugin(plugin_name)
+            
+            # If plugin not initialized, try to get it from plugin classes (for failed plugins)
+            if not plugin and hasattr(plugin_manager, '_plugin_classes'):
+                if plugin_name in plugin_manager._plugin_classes:
+                    try:
+                        # Create a temporary instance just for configuration
+                        plugin_class = plugin_manager._plugin_classes[plugin_name]
+                        plugin = plugin_class(plugin_name)
+                        
+                        # Set existing configuration if available
+                        if config and hasattr(config, 'get_plugin_config'):
+                            plugin_config = config.get_plugin_config(plugin_name)
+                            if plugin_config:
+                                plugin.config = plugin_config
+                        
+                        logger.info(f"Created temporary plugin instance for configuration: {plugin_name}")
+                    except Exception as e:
+                        logger.error(f"Failed to create temporary plugin instance: {e}")
+                        plugin = None
+            
             if not plugin:
                 return jsonify({'error': f'Plugin {plugin_name} not found'}), 404
             
@@ -619,6 +640,26 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
                 return jsonify({'error': 'Plugin manager not available'}), 500
             
             plugin = plugin_manager.get_plugin(plugin_name)
+            
+            # If plugin not initialized, try to get it from plugin classes (for failed plugins)
+            if not plugin and hasattr(plugin_manager, '_plugin_classes'):
+                if plugin_name in plugin_manager._plugin_classes:
+                    try:
+                        # Create a temporary instance just for configuration
+                        plugin_class = plugin_manager._plugin_classes[plugin_name]
+                        plugin = plugin_class(plugin_name)
+                        
+                        # Set existing configuration if available
+                        if config and hasattr(config, 'get_plugin_config'):
+                            plugin_config = config.get_plugin_config(plugin_name)
+                            if plugin_config:
+                                plugin.config = plugin_config
+                        
+                        logger.info(f"Created temporary plugin instance for configuration save: {plugin_name}")
+                    except Exception as e:
+                        logger.error(f"Failed to create temporary plugin instance for save: {e}")
+                        plugin = None
+            
             if not plugin:
                 return jsonify({'error': f'Plugin {plugin_name} not found'}), 404
             
