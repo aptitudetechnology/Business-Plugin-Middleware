@@ -38,6 +38,8 @@ help:
 .PHONY: up
 up:
 	@echo "🚀 Building and starting all services..."
+	@echo "🔧 Ensuring Docker network exists..."
+	@docker network create paperless_network 2>/dev/null || echo "✓ paperless_network already exists"
 	docker-compose -f $(COMPOSE_FILE) up --build -d
 	@echo "✅ Services started!"
 	@echo "🌐 Middleware: http://localhost:5000"
@@ -77,6 +79,8 @@ rebuild:
 fresh:
 	@echo "🧹 Stopping containers and rebuilding from scratch..."
 	docker-compose -f $(COMPOSE_FILE) down
+	@echo "🔧 Ensuring Docker network exists..."
+	@docker network create paperless_network 2>/dev/null || echo "✓ paperless_network already exists"
 	docker-compose -f $(COMPOSE_FILE) build --no-cache --pull
 	docker-compose -f $(COMPOSE_FILE) up -d
 	@echo "✅ Fresh build complete!"

@@ -11,8 +11,8 @@ services:
   # BigCapital Main Application
   bigcapital:
     build:
-      context: https://github.com/bigcapitalhq/bigcapital.git
-      dockerfile: docker/Dockerfile
+      context: https://github.com/bigcapitalhq/bigcapital.git#main
+      dockerfile: packages/server/Dockerfile
     container_name: bigcapital
     restart: unless-stopped
     depends_on:
