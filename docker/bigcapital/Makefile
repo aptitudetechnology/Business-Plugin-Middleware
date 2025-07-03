@@ -11,6 +11,12 @@ help: ## Show this help message
 	@echo "Available commands:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 	@echo ""
+	@echo "🔌 Port mappings (to avoid conflicts with main middleware):"
+	@echo "   BigCapital Web:  3000 -> 3000"
+	@echo "   MariaDB:         3307 -> 3306 (external -> internal)"
+	@echo "   MongoDB:         27018 -> 27017 (external -> internal)"
+	@echo "   Redis:           6380 -> 6379 (external -> internal)"
+	@echo ""
 	@echo "⚠️  Resource Requirements:"
 	@echo "   - RAM: 4GB+ recommended"
 	@echo "   - Storage: 10GB+ for data"

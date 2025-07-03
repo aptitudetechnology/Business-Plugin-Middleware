@@ -95,7 +95,7 @@ services:
       - bigcapital_mariadb:/var/lib/mysql
       - ./init-scripts:/docker-entrypoint-initdb.d
     ports:
-      - "3306:3306"
+      - "3307:3306"  # Use different external port to avoid conflict
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
@@ -122,7 +122,7 @@ services:
       - bigcapital_mongo:/data/db
       - bigcapital_mongo_config:/data/configdb
     ports:
-      - "27017:27017"
+      - "27018:27017"  # Use different external port to avoid conflict
     command: ["mongod", "--auth", "--bind_ip_all"]
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/bigcapital --quiet
@@ -140,7 +140,7 @@ services:
     volumes:
       - bigcapital_redis:/data
     ports:
-      - "6379:6379"
+      - "6380:6379"  # Use different external port to avoid conflict
     command: redis-server --requirepass bigcapital_redis_password --maxmemory 256mb --maxmemory-policy allkeys-lru
     healthcheck:
       test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
