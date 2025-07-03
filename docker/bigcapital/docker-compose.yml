@@ -38,10 +38,10 @@ services:
       - DB_USER=bigcapital
       - DB_PASSWORD=bigcapital_secure_password
       
-      # MongoDB configuration
-      - MONGODB_URI=mongodb://bigcapital:bigcapital_mongo_password@bigcapital-mongo:27017/bigcapital?authSource=admin
-      - MONGO_URL=mongodb://bigcapital:bigcapital_mongo_password@bigcapital-mongo:27017/bigcapital?authSource=admin
-      - DATABASE_URL=mongodb://bigcapital:bigcapital_mongo_password@bigcapital-mongo:27017/bigcapital?authSource=admin
+      # MongoDB configuration (simplified without authentication)
+      - MONGODB_URI=mongodb://bigcapital-mongo:27017/bigcapital
+      - MONGO_URL=mongodb://bigcapital-mongo:27017/bigcapital
+      - DATABASE_URL=mongodb://bigcapital-mongo:27017/bigcapital
       
       # Redis configuration
       - REDIS_HOST=bigcapital-redis
@@ -121,15 +121,14 @@ services:
     networks:
       - bigcapital_network
     environment:
-      MONGO_INITDB_ROOT_USERNAME: bigcapital
-      MONGO_INITDB_ROOT_PASSWORD: bigcapital_mongo_password
+      # Disable authentication for simplicity
       MONGO_INITDB_DATABASE: bigcapital
     volumes:
       - bigcapital_mongo:/data/db
       - bigcapital_mongo_config:/data/configdb
     ports:
       - "27018:27017"  # Use different external port to avoid conflict
-    command: ["mongod", "--auth", "--bind_ip_all"]
+    command: ["mongod", "--bind_ip_all"]  # Remove --auth to disable authentication
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/bigcapital --quiet
       interval: 30s
