@@ -37,10 +37,17 @@ validate_mongo_uri() {
     fi
 }
 
-# Load environment file if exists
 if [ -f .env ]; then
-    export $(grep -v '^#' .env | xargs)
+    echo "📄 Loading environment variables from .env"
+    while IFS='=' read -r key value; do
+        if [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+            export "$key"="${value%\"}"
+        fi
+    done < <(grep -v '^#' .env | grep '=')
+else
+    echo "⚠️  .env file not found — skipping environment load"
 fi
+
 
 # Check BigCapital App
 check_service "BigCapital App" "curl -s http://localhost:3000/health"
