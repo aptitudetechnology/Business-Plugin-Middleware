@@ -18,6 +18,8 @@ help: ## Show this help message
 
 up: ## Start BigCapital and all dependencies
 	@echo "🚀 Starting BigCapital services..."
+	@echo "🔧 Ensuring paperless_network exists..."
+	@docker network create paperless_network 2>/dev/null || echo "✓ paperless_network already exists"
 	@docker-compose up -d
 	@echo "✅ BigCapital is starting up"
 	@echo "📱 Web UI will be available at: http://simple.local:3000"
