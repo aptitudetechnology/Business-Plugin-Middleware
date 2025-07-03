@@ -37,7 +37,7 @@ git clone <repository-url>
 cd Business-Plugin-Middleware
 
 # 2. Start the standard setup
-make build
+make up
 
 # 3. Wait for services to initialize (2-3 minutes)
 # Monitor startup progress
@@ -57,7 +57,7 @@ This installation includes a complete self-hosted BigCapital accounting system a
 # Clone and start the base system first
 git clone <repository-url>
 cd Business-Plugin-Middleware
-make build
+make up
 ```
 
 #### Step 2: Add BigCapital Integration
@@ -294,7 +294,7 @@ make health
 
 ```bash
 # Using the Makefile (Recommended)
-make build          # Build and start all services
+make up             # Build and start all services
 make start          # Start services without rebuilding  
 make stop           # Stop all services
 make restart        # Restart middleware only
