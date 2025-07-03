@@ -1,141 +1,40 @@
-version: '3.8'
-
-networks:
-  bigcapital_network:
-    driver: bridge
-  paperless_network:
-    external: true
-
 services:
-  # BigCapital Main Application (using official pre-built image)
+  bigcapital-mongo:
+    image: mongo:5.0
+    container_name: bigcapital-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin_password
+      MONGO_INITDB_DATABASE: bigcapital
+    volumes:
+      - bigcapital_mongo:/data/db
+    networks:
+      - paperless_network
+    ports:
+      - "27018:27017"
+
   bigcapital:
     image: bigcapitalhq/server:latest
     container_name: bigcapital
     restart: unless-stopped
+    environment:
+      MONGODB_URI: mongodb://admin:admin_password@bigcapital-mongo:27017/bigcapital?authSource=admin
+      MONGO_URI: mongodb://admin:admin_password@bigcapital-mongo:27017/bigcapital?authSource=admin
+      # other environment variables for bigcapital...
     depends_on:
-      bigcapital-mariadb:
-        condition: service_healthy
-      bigcapital-mongo:
-        condition: service_healthy
-      bigcapital-redis:
-        condition: service_healthy
+      - bigcapital-mongo
+      - bigcapital-mariadb
+      - bigcapital-redis
+    networks:
+      - paperless_network
     ports:
       - "3000:3000"
-    networks:
-      - bigcapital_network
-      - paperless_network
-    environment:
-      # Application settings
-      - NODE_ENV=production
-      - APP_URL=http://simple.local:3000
-      - APP_NAME=BigCapital
-      - JWT_SECRET=change-me-please-jwt-secret-make-it-long-and-random
-      
-      # Database configuration (MySQL/MariaDB)
-      - DB_HOST=bigcapital-mariadb
-      - DB_PORT=3306
-      - DB_NAME=bigcapital
-      - DB_USER=bigcapital
-      - DB_PASSWORD=bigcapital_secure_password
-      - DATABASE_URL=mysql://bigcapital:bigcapital_secure_password@bigcapital-mariadb:3306/bigcapital
-      
-      # MongoDB configuration
-      # Added ?authSource=admin to make the connection string more explicit for older drivers
-      - MONGODB_URI=mongodb://bigcapital-mongo:27017/bigcapital?authSource=admin
-      - MONGO_URI=mongodb://bigcapital-mongo:27017/bigcapital?authSource=admin
-      
-      # Redis configuration
-      - REDIS_HOST=bigcapital-redis
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD=bigcapital_redis_password
-      - REDIS_URL=redis://:bigcapital_redis_password@bigcapital-redis:6379
-      
-      # Other settings...
-      - MAIL_HOST=smtp.gmail.com
-      - MAIL_PORT=587
-      - STORAGE_DRIVER=local
-      - STORAGE_LOCAL_PATH=/app/storage
-      - BCRYPT_ROUNDS=12
-      - SESSION_SECRET=another-long-random-secret-for-sessions
-      
-    volumes:
-      - bigcapital_uploads:/app/uploads
-      - bigcapital_storage:/app/storage
-      - bigcapital_logs:/app/logs
-
-  # Keep the same database configurations...
-  bigcapital-mariadb:
-    image: docker.io/library/mariadb:10.11
-    container_name: bigcapital-mariadb
-    restart: unless-stopped
-    networks:
-      - bigcapital_network
-    environment:
-      MYSQL_ROOT_PASSWORD: bigcapital_root_password_change_me
-      MYSQL_DATABASE: bigcapital
-      MYSQL_USER: bigcapital
-      MYSQL_PASSWORD: bigcapital_secure_password
-      MYSQL_CHARACTER_SET_SERVER: utf8mb4
-      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
-    volumes:
-      - bigcapital_mariadb:/var/lib/mysql
-    ports:
-      - "3307:3306"
-    command:
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "bigcapital", "-pbigcapital_secure_password"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  bigcapital-mongo:
-    image: docker.io/library/mongo:6.0
-    container_name: bigcapital-mongo
-    restart: unless-stopped
-    networks:
-      - bigcapital_network
-    environment:
-      MONGO_INITDB_DATABASE: bigcapital
-    volumes:
-      - bigcapital_mongo:/data/db
-    ports:
-      - "27018:27017"
-    command: ["mongod", "--bind_ip_all", "--noauth"]
-    healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/bigcapital --quiet
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  bigcapital-redis:
-    image: docker.io/library/redis:7-alpine
-    container_name: bigcapital-redis
-    restart: unless-stopped
-    networks:
-      - bigcapital_network
-    volumes:
-      - bigcapital_redis:/data # This uses the named volume
-    ports:
-      - "6380:6379"
-    command: redis-server --requirepass bigcapital_redis_password --maxmemory 256mb --maxmemory-policy allkeys-lru
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "bigcapital_redis_password", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
 volumes:
-  bigcapital_mariadb:
-    driver: local
   bigcapital_mongo:
     driver: local
-  bigcapital_redis: # <-- Added this missing declaration
-    driver: local
-  bigcapital_uploads:
-    driver: local
-  bigcapital_storage:
-    driver: local
-  bigcapital_logs:
-    driver: local
+
+networks:
+  paperless_network:
+    external: true
