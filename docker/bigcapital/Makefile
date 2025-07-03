@@ -27,6 +27,8 @@ up: ## Start BigCapital and all dependencies
 	@echo "🚀 Starting BigCapital services..."
 	@echo "🔧 Ensuring paperless_network exists..."
 	@docker network create paperless_network 2>/dev/null || echo "✓ paperless_network already exists"
+	@echo "🔍 Validating docker-compose.yml..."
+	@docker-compose config -q || (echo "❌ docker-compose.yml has errors - run 'make validate-compose' for details" && exit 1)
 	@echo "⚡ Using pre-built image - startup should be fast!"
 	@docker-compose up -d
 	@echo "✅ BigCapital is starting up"
@@ -271,3 +273,28 @@ validate-env: ## Validate environment and prerequisites
 	@echo "📊 Port availability:"
 	@netstat -tuln | grep -E ":3000|:3307|:27018|:6380" || echo "✅ Required ports appear to be available"
 	@echo "✅ Environment validation complete"
+
+validate-compose: ## Validate docker-compose.yml configuration
+	@echo "🔍 Validating docker-compose.yml..."
+	@docker-compose config || echo "❌ docker-compose.yml has configuration errors"
+	@echo "🔍 Checking volume declarations..."
+	@docker-compose config --volumes || echo "❌ Volume configuration issues found"
+
+fix-compose: ## Fix common docker-compose.yml issues
+	@echo "🔧 Checking for missing volume declarations..."
+	@echo "📋 Your docker-compose.yml should include these volumes:"
+	@echo "volumes:"
+	@echo "  bigcapital_mariadb:"
+	@echo "    driver: local"
+	@echo "  bigcapital_mongo:"
+	@echo "    driver: local"
+	@echo "  bigcapital_redis:"
+	@echo "    driver: local"
+	@echo "  bigcapital_uploads:"
+	@echo "    driver: local"
+	@echo "  bigcapital_storage:"
+	@echo "    driver: local"
+	@echo "  bigcapital_logs:"
+	@echo "    driver: local"
+	@echo ""
+	@echo "💡 Add the missing 'bigcapital_redis:' volume declaration to your docker-compose.yml"
