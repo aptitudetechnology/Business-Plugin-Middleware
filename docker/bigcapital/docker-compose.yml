@@ -39,7 +39,9 @@ services:
       - DB_PASSWORD=bigcapital_secure_password
       
       # MongoDB configuration
-      - MONGODB_URI=mongodb://bigcapital:bigcapital_mongo_password@bigcapital-mongo:27017/bigcapital
+      - MONGODB_URI=mongodb://bigcapital:bigcapital_mongo_password@bigcapital-mongo:27017/bigcapital?authSource=admin
+      - MONGO_URL=mongodb://bigcapital:bigcapital_mongo_password@bigcapital-mongo:27017/bigcapital?authSource=admin
+      - DATABASE_URL=mongodb://bigcapital:bigcapital_mongo_password@bigcapital-mongo:27017/bigcapital?authSource=admin
       
       # Redis configuration
       - REDIS_HOST=bigcapital-redis
