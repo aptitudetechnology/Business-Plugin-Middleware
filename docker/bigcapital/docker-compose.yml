@@ -59,6 +59,7 @@ services:
       REDIS_HOST: bigcapital-redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: bigcapital_redis_password
+      NEW_RELIC_APP_NAME: YourAppNameHere # Added this line
       # Add any other BigCapital env vars here
     depends_on:
       - bigcapital-mariadb
