@@ -43,13 +43,16 @@ check_service() {
 # HTTP app check with response status
 echo "🌐 Web Service Checks"
 echo "----------------------"
-app_response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/health)
+echo -n "🔎 BigCapital App... "
+app_response=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost:3000/health || echo "000")
+
 if [ "$app_response" == "200" ]; then
-    echo "🔎 BigCapital App... ✅ Healthy (HTTP 200)"
+    echo "✅ Healthy (HTTP 200)"
 else
-    echo "🔎 BigCapital App... ❌ Unhealthy (HTTP $app_response)"
+    echo "❌ Unhealthy (HTTP $app_response)"
     echo "   ↳ Visit http://localhost:3000/health in your browser or use: curl -v http://localhost:3000/health"
 fi
+
 
 echo ""
 
