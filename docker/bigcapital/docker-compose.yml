@@ -10,7 +10,12 @@ networks:
 services:
   # BigCapital Main Application
   bigcapital:
-    image: bigcapital/bigcapital:latest
+    build:
+      context: https://github.com/bigcapitalhq/bigcapital.git#main
+      dockerfile: packages/server/Dockerfile
+      args:
+        - MONGODB_URI=mongodb://bigcapital-mongo:27017/bigcapital
+        - NODE_ENV=production
     container_name: bigcapital
     restart: unless-stopped
     depends_on:
