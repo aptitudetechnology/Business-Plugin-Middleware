@@ -109,34 +109,33 @@ def fix_plugin_routes(routes_path: str):
                 
                 for key, value in config_data.items():
                     if key in ['api_key', 'password', 'secret']:
-                        form_html += f'''<div class="mb-3">
-                            <label for="{key}" class="form-label">{key.replace('_', ' ').title()}</label>
-                            <input type="password" class="form-control" id="{key}" name="{key}" 
-                                   placeholder="Enter {key.replace('_', ' ')}" required>
-                        </div>'''
+                        form_html += f'<div class="mb-3">' + \\
+                            f'<label for="{key}" class="form-label">{key.replace("_", " ").title()}</label>' + \\
+                            f'<input type="password" class="form-control" id="{key}" name="{key}" ' + \\
+                            f'placeholder="Enter {key.replace("_", " ")}" required>' + \\
+                            '</div>'
                     elif key == 'enabled':
-                        form_html += f'''<div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="{key}" name="{key}" 
-                                   {"checked" if value else ""}>
-                            <label class="form-check-label" for="{key}">Enable Plugin</label>
-                        </div>'''
+                        checked = 'checked' if value else ''
+                        form_html += f'<div class="mb-3 form-check">' + \\
+                            f'<input type="checkbox" class="form-check-input" id="{key}" name="{key}" {checked}>' + \\
+                            f'<label class="form-check-label" for="{key}">Enable Plugin</label>' + \\
+                            '</div>'
                     else:
-                        form_html += f'''<div class="mb-3">
-                            <label for="{key}" class="form-label">{key.replace('_', ' ').title()}</label>
-                            <input type="text" class="form-control" id="{key}" name="{key}" 
-                                   value="{value}" placeholder="{key.replace('_', ' ').title()}">
-                        </div>'''
+                        form_html += f'<div class="mb-3">' + \\
+                            f'<label for="{key}" class="form-label">{key.replace("_", " ").title()}</label>' + \\
+                            f'<input type="text" class="form-control" id="{key}" name="{key}" ' + \\
+                            f'value="{value}" placeholder="{key.replace("_", " ").title()}">' + \\
+                            '</div>'
                 
-                form_html += '''<button type="submit" class="btn btn-primary">Save Configuration</button>
-                    </form>'''
+                form_html += '<button type="submit" class="btn btn-primary">Save Configuration</button></form>'
                 
-                return f'''<div class="container mt-4">
-                    <h2>{plugin_name.title()} Plugin Configuration</h2>
-                    <div class="alert alert-warning">
-                        <strong>Plugin Status:</strong> Not initialized (likely due to missing configuration)
-                    </div>
-                    {form_html}
-                </div>'''
+                return f'<div class="container mt-4">' + \\
+                    f'<h2>{plugin_name.title()} Plugin Configuration</h2>' + \\
+                    '<div class="alert alert-warning">' + \\
+                    '<strong>Plugin Status:</strong> Not initialized (likely due to missing configuration)' + \\
+                    '</div>' + \\
+                    form_html + \\
+                    '</div>'
             else:
                 return render_template('errors/plugin_error.html', 
                                      plugin_name=plugin_name.title(),
