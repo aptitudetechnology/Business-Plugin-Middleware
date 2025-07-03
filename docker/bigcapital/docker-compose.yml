@@ -10,13 +10,12 @@ networks:
 services:
   # BigCapital Main Application
   bigcapital:
-    build:
-      context: https://github.com/bigcapitalhq/bigcapital.git#main
-      dockerfile: packages/server/Dockerfile
+    image: bigcapital/bigcapital:latest
     container_name: bigcapital
     restart: unless-stopped
     depends_on:
       - bigcapital-mariadb
+      - bigcapital-mongo
       - bigcapital-redis
     ports:
       - "3000:3000"
@@ -36,6 +35,10 @@ services:
       - DB_NAME=bigcapital
       - DB_USER=bigcapital
       - DB_PASSWORD=bigcapital_secure_password
+      
+      # MongoDB configuration (standard format for pre-built image)
+      - MONGODB_URI=mongodb://bigcapital-mongo:27017/bigcapital
+      - MONGO_URI=mongodb://bigcapital-mongo:27017/bigcapital
       
       # Redis configuration
       - REDIS_HOST=bigcapital-redis
