@@ -1,101 +1,80 @@
 #!/bin/bash
-# BigCapital Health Check Script
-
-set -e
 
 echo "🔍 BigCapital Health Check"
 echo "=========================="
 
-# Load .env file if exists
-if [[ -f .env ]]; then
-    echo "📄 Loading environment variables from .env"
-    set -o allexport
-    source .env
-    set +o allexport
+# -----------------------------------------------------------------------------
+# Load .env Safely
+# -----------------------------------------------------------------------------
+echo "📄 Loading environment variables from .env"
+
+if [[ ! -f .env ]]; then
+    echo "❌ .env file not found. Please create one."
+    exit 1
 fi
 
-# Helper to check if a command exists
-command_exists() {
-    command -v "$1" >/dev/null 2>&1
-}
+# Validate .env lines
+bad_lines=$(grep -vE '^\s*#|^\s*$|^[A-Za-z_][A-Za-z0-9_]*=' .env)
+if [[ -n "$bad_lines" ]]; then
+    echo "⚠️ Found invalid lines in .env:"
+    echo "$bad_lines"
+    echo ""
+    echo "Please fix or comment out these lines before continuing."
+    exit 1
+fi
 
-# Helper function for service checks
-check_service() {
-    local name="$1"
-    local cmd="$2"
-    local help="$3"
+# Load valid environment variables
+export $(grep -E '^[A-Za-z_][A-Za-z0-9_]*=' .env | xargs)
 
-    echo -n "🔎 $name... "
-    output=$(eval "$cmd" 2>&1)
-    if [[ $? -eq 0 ]]; then
-        echo "✅ Healthy"
-    else
-        echo "❌ Unhealthy"
-        if [[ -n "$help" ]]; then
-            echo "   ↳ $help"
-        fi
-        echo "   ↳ Output:"
-        echo "   ---------------------------------"
-        echo "$output" | sed 's/^/   /'
-        echo "   ---------------------------------"
-    fi
-}
-
-echo
+# -----------------------------------------------------------------------------
+# Web Service Check
+# -----------------------------------------------------------------------------
+echo ""
 echo "🌐 Web Service Checks"
 echo "----------------------"
 
-check_service "BigCapital App" \
-    "curl -sf http://localhost:3000/health" \
-    "Visit http://localhost:3000/health in your browser or use: curl -v http://localhost:3000/health"
+HEALTH_URL="${APP_URL}/health"
+if command -v curl > /dev/null; then
+    http_code=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL")
+    if [[ "$http_code" == "200" ]]; then
+        echo "🔎 BigCapital App... ✅ Healthy (HTTP 200)"
+    else
+        echo "🔎 BigCapital App... ❌ Unhealthy (HTTP $http_code)"
+        echo "   ↳ Visit $HEALTH_URL or run: curl -v $HEALTH_URL"
+    fi
+else
+    echo "❌ curl not found. Cannot check web health."
+fi
 
-echo
+# -----------------------------------------------------------------------------
+# Database Checks
+# -----------------------------------------------------------------------------
+echo ""
 echo "🗄️  Database Checks"
 echo "----------------------"
 
-if command_exists docker-compose; then
-    check_service "MariaDB" \
-        "docker-compose exec bigcapital-mariadb mysqladmin ping -ubigcapital -pbigcapital_secure_password" \
-        "Could not ping MariaDB. Ensure credentials and host are correct."
-
-    if [[ -z "$MONGO_URI" ]]; then
-        echo "⚠️  Skipping Mongo URI validation: MONGO_URI not set"
+# MariaDB
+if command -v mysqladmin > /dev/null; then
+    mariadb_status=$(mysqladmin ping -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" --password="$DB_PASSWORD" 2>&1)
+    if [[ "$mariadb_status" == *"mysqld is alive"* ]]; then
+        echo "🔎 MariaDB... ✅ Healthy"
+    else
+        echo "🔎 MariaDB... ❌ Unhealthy"
+        echo "   ↳ Could not ping MariaDB. Check DB_HOST, DB_USER, and credentials."
+        echo "   ↳ Output:"
+        echo "   ---------------------------------"
+        echo "$mariadb_status"
+        echo "   ---------------------------------"
     fi
-
-    check_service "MongoDB" \
-        "docker-compose exec bigcapital-mongo mongosh --eval 'db.runCommand(\"ping\")' --quiet" \
-        "Failed to ping MongoDB. Is the container running and accepting connections?"
 else
-    echo "❌ docker-compose is not installed or not in PATH."
+    echo "❌ mysqladmin not found. Cannot check MariaDB."
 fi
 
-echo
-echo "🧠 Cache Service Checks"
-echo "------------------------"
-
-if command_exists docker-compose; then
-    check_service "Redis" \
-        "docker-compose exec bigcapital-redis redis-cli ping | grep -q PONG" \
-        "Redis did not respond with PONG. Ensure it's running and accessible."
-fi
-
-echo
-echo "📦 Container Status:"
-echo "----------------------"
-if command_exists docker-compose; then
-    docker-compose ps
+# MongoDB
+echo ""
+if [[ -z "$MONGODB_URI" ]]; then
+    echo "⚠️  Skipping MongoDB check: MONGODB_URI not set"
 else
-    echo "docker-compose not available."
-fi
-
-echo
-echo "💾 Volume Usage:"
-echo "----------------------"
-if command_exists docker; then
-    docker system df
-else
-    echo "docker command not available."
-fi
-
-echo
-echo "🌐 BigCapital should be available at: http://simple.local:3000"
+    if command -v docker > /dev/null; then
+        mongo_output=$(docker run --rm mongo:6.0 mongosh "$MONGODB_URI" --eval "db.runCommand({ ping: 1 })" 2>&1)
+        if [[ "$mongo_output" ==_]()]()
