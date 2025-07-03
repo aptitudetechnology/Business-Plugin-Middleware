@@ -1,21 +1,23 @@
 # Business Plugin Middleware
 
-**A modular document processing middleware with plugin architecture for business document management systems.**
+**A document processing middleware that bridges document management systems (like Paperless-NGX) with accounting platforms (like BigCapital) through a modular plugin architecture.**
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.9+-blue.svg)
 
-Based on the original [Simplified Paperless BigCapital Middleware](https://github.com/aptitudetechnology/simplified-paperless-bigcapital-middleware), this version provides a comprehensive plugin-based architecture for integrating various document management and accounting systems.
+Based on the original [Simplified Paperless BigCapital Middleware](https://github.com/aptitudetechnology/simplified-paperless-bigcapital-middleware), this version provides a comprehensive plugin-based architecture for connecting document management systems with accounting platforms, automating the flow from document ingestion to accounting entry creation.
 
 ## 🌟 Key Features
 
-- **🔌 Plugin-Based Architecture** - Easily extensible with new integrations
-- **🌐 Modern Web Interface** - Intuitive dashboard for managing documents and plugins
+- **� Document-to-Accounting Bridge** - Seamlessly connects document management with accounting systems
+- **�🔌 Plugin-Based Architecture** - Easily extensible with new integrations (BigCapital, Invoice Ninja, etc.)
+- **📄 Smart Document Processing** - OCR extraction and automated data mapping for invoices and receipts
+- **🌐 Modern Web Interface** - Intuitive dashboard for managing documents, plugins, and integrations
 - **📊 System Diagnostics** - Built-in connectivity tests and container monitoring
 - **🐳 Docker Ready** - Complete containerized deployment with Docker Compose
 - **📝 Advanced Logging** - Comprehensive logging with Loguru for better debugging
-- **🔄 Real-time OCR** - View and download OCR content directly from the web interface
+- **🔄 Real-time Processing** - View and process OCR content directly from the web interface
 - **⚙️ Dynamic Configuration** - Configure plugins through web UI or configuration files
 - **🔒 Network Flexibility** - Supports various deployment scenarios (Docker, VM, host)
 
@@ -29,7 +31,7 @@ Based on the original [Simplified Paperless BigCapital Middleware](https://githu
 
 ### Method 1: Standard Installation (Paperless-NGX + Middleware)
 
-This is the recommended installation for most users. It includes document management with Paperless-NGX and the plugin middleware.
+This is the base installation that provides document processing with Paperless-NGX and the middleware bridge. **Note:** To fully utilize the middleware, you'll need to add accounting system integrations (like BigCapital) - see Method 2 for complete integration.
 
 ```bash
 # 1. Clone the repository
@@ -48,9 +50,9 @@ make logs
 # - Paperless-NGX: http://simple.local:8000
 ```
 
-### Method 2: Full Installation (+ BigCapital Self-Hosted)
+### Method 2: Full Installation (+ BigCapital Self-Hosted) **[RECOMMENDED]**
 
-This installation includes a complete self-hosted BigCapital accounting system alongside the document processing middleware.
+This is the complete installation that includes self-hosted BigCapital accounting system, providing the full document-to-accounting workflow that the middleware is designed for.
 
 #### Step 1: Install Standard Setup
 ```bash
