@@ -66,6 +66,10 @@ services:
       - BCRYPT_ROUNDS=12
       - SESSION_SECRET=another-long-random-secret-for-sessions
       
+      # New Relic configuration (disabled for self-hosted)
+      - NEW_RELIC_ENABLED=false
+      - NEW_RELIC_APP_NAME=BigCapital-SelfHosted
+      
     volumes:
       - bigcapital_uploads:/app/uploads
       - bigcapital_storage:/app/storage
