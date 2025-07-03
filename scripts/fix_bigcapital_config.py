@@ -115,7 +115,7 @@ def create_bigcapital_default_config(config_path: str, plugins_path: str):
             config.add_section('bigcapital')
         
         config.set('bigcapital', 'api_key', 'YOUR_BIGCAPITAL_API_KEY_HERE')
-        config.set('bigcapital', 'base_url', 'https://api.bigcapital.ly')
+        config.set('bigcapital', 'base_url', 'http://bigcapital:3000')
         config.set('bigcapital', 'timeout', '30')
         config.set('bigcapital', 'enabled', 'False')
         
@@ -132,7 +132,7 @@ def create_bigcapital_default_config(config_path: str, plugins_path: str):
             
             plugins_config['plugins']['bigcapital'].update({
                 'api_key': 'YOUR_BIGCAPITAL_API_KEY_HERE',
-                'base_url': 'https://api.bigcapital.ly',
+                'base_url': 'http://bigcapital:3000',
                 'timeout': 30,
                 'enabled': False
             })
@@ -288,19 +288,25 @@ def provide_configuration_guidance():
     print("   2. Visit: http://simple.local:5000/plugins")
     print("   3. Look for BigCapital plugin in the list")
     print("   4. Click 'Configure' or 'Settings' button")
-    print("   5. Enter your API key from: https://app.bigcapital.ly/settings/api")
+    print("   5. Enter your API key from your self-hosted BigCapital instance")
     print()
     print("📋 Method 2: Direct Configuration File Edit")
     print("   1. Edit config/plugins.json")
     print("   2. Find the 'bigcapital' section")
     print("   3. Update the 'api_key' field with your actual key")
-    print("   4. Set 'enabled': true")
-    print("   5. Restart: docker compose restart middleware")
+    print("   4. Update 'base_url' to point to your BigCapital instance")
+    print("   5. Set 'enabled': true")
+    print("   6. Restart: docker compose restart middleware")
     print()
     print("🔑 Get your BigCapital API Key:")
-    print("   - Log into BigCapital: https://app.bigcapital.ly")
-    print("   - Go to Settings → API")
+    print("   - Access your BigCapital instance (e.g., http://localhost:3000)")
+    print("   - Go to Settings → API or User Settings")
     print("   - Generate or copy your API key")
+    print()
+    print("🐳 Local BigCapital Setup:")
+    print("   - Use docker/bigcapital/ folder for local BigCapital instance")
+    print("   - Default URL: http://bigcapital:3000 (container-to-container)")
+    print("   - External URL: http://simple.local:3000 (browser access)")
     print()
     print("⚠️  If you see 'Plugin bigcapital not found' errors:")
     print("   - This usually means the plugin failed to load due to missing config")

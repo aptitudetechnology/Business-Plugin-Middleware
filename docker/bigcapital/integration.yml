@@ -1,0 +1,191 @@
+# =============================================================================
+# BigCapital Integration for Business Plugin Middleware
+# =============================================================================
+# 
+# Copy these services to your main docker-compose.yml file to integrate
+# BigCapital with the Business Plugin Middleware.
+#
+# IMPORTANT: 
+# 1. Uncomment the services you want to use
+# 2. Change all default passwords before production use
+# 3. Add 'bigcapital' to the middleware service's depends_on list
+# 4. Ensure the paperless_network is defined in your main compose file
+#
+# Resource Requirements:
+# - RAM: 4GB+ recommended  
+# - Storage: 10GB+ for data
+# - CPU: 2+ cores recommended
+# =============================================================================
+
+  # Uncomment the lines below to enable BigCapital integration
+  # WARNING: BigCapital requires significant system resources (MariaDB, MongoDB, Redis)
+  
+  # BigCapital Main Application
+  bigcapital:
+    image: bigcapital/bigcapital:latest
+    container_name: bigcapital
+    restart: unless-stopped
+    depends_on:
+      - bigcapital-mariadb
+      - bigcapital-mongo
+      - bigcapital-redis
+    ports:
+      - "3000:3000"
+    networks:
+      - paperless_network
+    environment:
+      # Application settings
+      - NODE_ENV=production
+      - APP_URL=http://simple.local:3000
+      - APP_NAME=BigCapital
+      - JWT_SECRET=change-me-please-jwt-secret-make-it-long-and-random
+      
+      # Database configuration
+      - DB_HOST=bigcapital-mariadb
+      - DB_PORT=3306
+      - DB_NAME=bigcapital
+      - DB_USER=bigcapital
+      - DB_PASSWORD=bigcapital_secure_password
+      
+      # MongoDB configuration
+      - MONGODB_URI=mongodb://bigcapital:bigcapital_mongo_password@bigcapital-mongo:27017/bigcapital
+      
+      # Redis configuration
+      - REDIS_HOST=bigcapital-redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=bigcapital_redis_password
+      
+      # Security
+      - BCRYPT_ROUNDS=12
+      - SESSION_SECRET=another-long-random-secret-for-sessions
+      
+    volumes:
+      - bigcapital_uploads:/app/uploads
+      - bigcapital_storage:/app/storage
+      - bigcapital_logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # MariaDB Database for BigCapital
+  bigcapital-mariadb:
+    image: docker.io/library/mariadb:10.11
+    container_name: bigcapital-mariadb
+    restart: unless-stopped
+    networks:
+      - paperless_network
+    environment:
+      MYSQL_ROOT_PASSWORD: bigcapital_root_password_change_me
+      MYSQL_DATABASE: bigcapital
+      MYSQL_USER: bigcapital
+      MYSQL_PASSWORD: bigcapital_secure_password
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+    volumes:
+      - bigcapital_mariadb:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max_connections=200
+      - --innodb_buffer_pool_size=256M
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "bigcapital", "-pbigcapital_secure_password"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # MongoDB Database for BigCapital
+  bigcapital-mongo:
+    image: docker.io/library/mongo:6.0
+    container_name: bigcapital-mongo
+    restart: unless-stopped
+    networks:
+      - paperless_network
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: bigcapital
+      MONGO_INITDB_ROOT_PASSWORD: bigcapital_mongo_password
+      MONGO_INITDB_DATABASE: bigcapital
+    volumes:
+      - bigcapital_mongo:/data/db
+      - bigcapital_mongo_config:/data/configdb
+    ports:
+      - "27017:27017"
+    command: ["mongod", "--auth", "--bind_ip_all"]
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/bigcapital --quiet
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis Cache for BigCapital
+  bigcapital-redis:
+    image: docker.io/library/redis:7-alpine
+    container_name: bigcapital-redis
+    restart: unless-stopped
+    networks:
+      - paperless_network
+    volumes:
+      - bigcapital_redis:/data
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass bigcapital_redis_password --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# =============================================================================
+# Add these volumes to your main docker-compose.yml volumes section:
+# =============================================================================
+
+# volumes:
+#   bigcapital_mariadb:
+#   bigcapital_mongo:
+#   bigcapital_mongo_config:
+#   bigcapital_redis:
+#   bigcapital_uploads:
+#   bigcapital_storage:
+#   bigcapital_logs:
+
+# =============================================================================
+# Update your middleware service to depend on BigCapital:
+# =============================================================================
+
+# middleware:
+#   # ... existing configuration ...
+#   depends_on:
+#     - paperless-ngx
+#     - bigcapital  # Add this line
+#     - gotenberg
+#     - tika
+
+# =============================================================================
+# Security Notes for Production:
+# =============================================================================
+# 
+# 1. Change ALL default passwords:
+#    - JWT_SECRET: Use a secure random string (min 32 chars)
+#    - SESSION_SECRET: Use a secure random string (min 32 chars)  
+#    - DB_PASSWORD: Use a strong database password
+#    - MYSQL_ROOT_PASSWORD: Use a strong root password
+#    - MONGO_INITDB_ROOT_PASSWORD: Use a strong MongoDB password
+#    - REDIS_PASSWORD: Use a strong Redis password
+#
+# 2. Remove port mappings for internal services if not needed:
+#    - Remove "3306:3306" for MariaDB
+#    - Remove "27017:27017" for MongoDB  
+#    - Remove "6379:6379" for Redis
+#
+# 3. Use environment variables or secrets for sensitive data
+#
+# 4. Configure SSL/TLS for production deployments
+#
+# 5. Set up regular backups of all data volumes
+#
+# =============================================================================

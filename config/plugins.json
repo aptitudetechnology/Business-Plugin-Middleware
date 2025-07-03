@@ -3,7 +3,7 @@
     "bigcapital": {
       "enabled": true,
       "api_key": "your-bigcapital-api-key-here",
-      "base_url": "https://api.bigcapital.ly",
+      "base_url": "http://bigcapital:3000",
       "auto_sync": false,
       "sync_interval": 3600,
       "retry_attempts": 3
