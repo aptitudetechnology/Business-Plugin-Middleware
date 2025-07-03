@@ -20,10 +20,11 @@ up: ## Start BigCapital and all dependencies
 	@echo "🚀 Starting BigCapital services..."
 	@echo "🔧 Ensuring paperless_network exists..."
 	@docker network create paperless_network 2>/dev/null || echo "✓ paperless_network already exists"
+	@echo "⚠️  Building BigCapital from source - this may take 10-15 minutes..."
 	@docker-compose up -d
 	@echo "✅ BigCapital is starting up"
 	@echo "📱 Web UI will be available at: http://simple.local:3000"
-	@echo "⏳ Initial startup may take 2-3 minutes..."
+	@echo "⏳ Initial startup may take 5-10 minutes for first-time build..."
 
 down: ## Stop BigCapital services
 	@echo "🛑 Stopping BigCapital services..."
@@ -42,9 +43,10 @@ status: ## Show status of all BigCapital services
 
 init: ## Initialize BigCapital with default configuration
 	@echo "🔧 Initializing BigCapital..."
+	@echo "⚠️  This will build BigCapital from source (10-15 minutes)..."
 	@$(MAKE) up
 	@echo "⏳ Waiting for services to be ready..."
-	@sleep 30
+	@sleep 60
 	@echo "🌐 BigCapital should now be available at: http://simple.local:3000"
 	@echo "📋 Default admin credentials:"
 	@echo "   Email: admin@bigcapital.com"

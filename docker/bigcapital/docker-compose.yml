@@ -10,7 +10,9 @@ networks:
 services:
   # BigCapital Main Application
   bigcapital:
-    image: bigcapital/bigcapital:latest
+    build:
+      context: https://github.com/bigcapitalhq/bigcapital.git
+      dockerfile: docker/Dockerfile
     container_name: bigcapital
     restart: unless-stopped
     depends_on:
