@@ -6,37 +6,7 @@ set -e
 echo "🔍 BigCapital Health Check"
 echo "=========================="
 
-# Function to check if a service is healthy
-check_service() {
-    local service_name=$1
-    local check_command=$2
-
-    echo -n "Checking $service_name... "
-
-    if eval "$check_command" &>/dev/null; then
-        echo "✅ Healthy"
-        return 0
-    else
-        echo "❌ Unhealthy"
-        return 1
-    fi
-}
-
-# Function to validate MongoDB URI format
-validate_mongo_uri() {
-    local uri=$1
-
-    echo -n "Validating MongoDB URI... "
-    
-    if [[ $uri =~ ^mongodb(\+srv)?:\/\/[^:]+:[^@]+@[^\/]+\/[^?]+(\?.*)?$ ]]; then
-        echo "✅ Format looks valid"
-    else
-        echo "❌ Invalid format"
-        echo "   Example format: mongodb://user:pass@host:27017/dbname?options"
-        return 1
-    fi
-}
-
+# Load environment variables from .env safely
 if [ -f .env ]; then
     echo "📄 Loading environment variables from .env"
     while IFS='=' read -r key value; do
@@ -48,33 +18,82 @@ else
     echo "⚠️  .env file not found — skipping environment load"
 fi
 
+echo ""
 
-# Check BigCapital App
-check_service "BigCapital App" "curl -s http://localhost:3000/health"
+# Function to check a service and print verbose output on failure
+check_service() {
+    local service_name=$1
+    local check_command=$2
+    local error_message=${3:-"Check failed."}
 
-# Check MariaDB
-check_service "MariaDB" "mysqladmin ping -h bigcapital-mariadb -u bigcapital -pbigcapital_secure_password"
+    echo -n "🔎 Checking $service_name... "
 
-# Validate Mongo URI (if provided)
+    if output=$(eval "$check_command" 2>&1); then
+        echo "✅ Healthy"
+    else
+        echo "❌ Unhealthy"
+        echo "   ↳ $error_message"
+        echo "   ↳ Output:"
+        echo "   ---------------------------------"
+        echo "$output" | sed 's/^/   /'
+        echo "   ---------------------------------"
+    fi
+}
+
+# HTTP app check with response status
+echo "🌐 Web Service Checks"
+echo "----------------------"
+app_response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/health)
+if [ "$app_response" == "200" ]; then
+    echo "🔎 BigCapital App... ✅ Healthy (HTTP 200)"
+else
+    echo "🔎 BigCapital App... ❌ Unhealthy (HTTP $app_response)"
+    echo "   ↳ Visit http://localhost:3000/health in your browser or use: curl -v http://localhost:3000/health"
+fi
+
+echo ""
+
+# Check database services
+echo "🗄️  Database Checks"
+echo "----------------------"
+check_service "MariaDB" "mysqladmin ping -h bigcapital-mariadb -u bigcapital -pbigcapital_secure_password" \
+    "Could not ping MariaDB. Ensure credentials and host are correct."
+
+# Validate MONGO_URI
 if [ -n "$MONGO_URI" ]; then
-    validate_mongo_uri "$MONGO_URI"
+    echo -n "🔎 Validating MongoDB URI... "
+    if [[ $MONGO_URI =~ ^mongodb(\+srv)?:\/\/[^:]+:[^@]+@[^\/]+\/[^?]+(\?.*)?$ ]]; then
+        echo "✅ Format OK"
+    else
+        echo "❌ Invalid format"
+        echo "   ↳ Example: mongodb://user:pass@host:27017/dbname?retryWrites=true"
+    fi
 else
     echo "⚠️  Skipping Mongo URI validation: MONGO_URI not set"
 fi
 
-# Check MongoDB using Docker exec
-check_service "MongoDB" "docker compose exec -T bigcapital-mongo mongosh --eval 'db.runCommand({ ping: 1 })' --quiet"
-
-# Check Redis
-check_service "Redis" "docker compose exec -T bigcapital-redis redis-cli ping | grep -q PONG"
+check_service "MongoDB" \
+    "docker compose exec -T bigcapital-mongo mongosh --eval 'db.runCommand({ ping: 1 })' --quiet" \
+    "Failed to ping MongoDB. Is the container running and accepting connections?"
 
 echo ""
-echo "📊 Container Status:"
+
+# Check Redis
+echo "🧠 Cache Service Checks"
+echo "------------------------"
+check_service "Redis" \
+    "docker compose exec -T bigcapital-redis redis-cli ping | grep -q PONG" \
+    "Redis did not respond with PONG. Ensure it's running and accessible."
+
+echo ""
+echo "📦 Container Status:"
+echo "----------------------"
 docker compose ps
 
 echo ""
-echo "💾 Volume Usage:"
+echo "💽 Volume Usage:"
+echo "----------------------"
 docker system df
 
 echo ""
-echo "🌐 BigCapital should be available at: http://simple.local:3000"
+echo "🌍 BigCapital should be available at: http://simple.local:3000"
