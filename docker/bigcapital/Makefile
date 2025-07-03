@@ -140,3 +140,29 @@ health: ## Check health of all BigCapital services
 	@echo ""
 	@echo "📊 Redis:"
 	@docker-compose exec bigcapital-redis redis-cli ping || echo "❌ Redis not responding"
+
+# Troubleshooting
+troubleshoot: ## Run comprehensive BigCapital troubleshooting
+	@echo "🔍 BigCapital Troubleshooting Report"
+	@echo "==================================="
+	@echo ""
+	@./debug-bigcapital.sh
+	@echo ""
+	@echo "📋 For detailed status and workarounds, see:"
+	@echo "   📄 BIGCAPITAL_STATUS.md"
+	@echo ""
+
+status-report: ## Show current BigCapital status and known issues
+	@echo "📊 BigCapital Integration Status"
+	@echo "==============================="
+	@echo ""
+	@echo "⚠️  KNOWN ISSUE: MongoDB connection error when building from source"
+	@echo "📄 See BIGCAPITAL_STATUS.md for details and workarounds"
+	@echo ""
+	@echo "🔧 Current Status:"
+	@$(MAKE) status
+	@echo ""
+	@echo "💡 Recommended Actions:"
+	@echo "   1. Use BigCapital cloud service instead of self-hosting"
+	@echo "   2. Continue with Paperless-NGX integration"
+	@echo "   3. Check BIGCAPITAL_STATUS.md for alternatives"
