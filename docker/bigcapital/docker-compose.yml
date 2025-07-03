@@ -17,7 +17,6 @@ services:
     restart: unless-stopped
     depends_on:
       - bigcapital-mariadb
-      - bigcapital-mongo
       - bigcapital-redis
     ports:
       - "3000:3000"
@@ -31,17 +30,12 @@ services:
       - APP_NAME=BigCapital
       - JWT_SECRET=change-me-please-jwt-secret-make-it-long-and-random
       
-      # Database configuration
+      # Database configuration (MySQL only - disable MongoDB for now)
       - DB_HOST=bigcapital-mariadb
       - DB_PORT=3306
       - DB_NAME=bigcapital
       - DB_USER=bigcapital
       - DB_PASSWORD=bigcapital_secure_password
-      
-      # MongoDB configuration (simplified without authentication)
-      - MONGODB_URI=mongodb://bigcapital-mongo:27017/bigcapital
-      - MONGO_URL=mongodb://bigcapital-mongo:27017/bigcapital
-      - DATABASE_URL=mongodb://bigcapital-mongo:27017/bigcapital
       
       # Redis configuration
       - REDIS_HOST=bigcapital-redis
