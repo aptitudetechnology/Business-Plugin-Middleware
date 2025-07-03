@@ -13,7 +13,7 @@ if [[ ! -f .env ]]; then
     exit 1
 fi
 
-# Validate .env lines
+# Validate .env lines (allow only valid KEY=VALUE or comments or empty lines)
 bad_lines=$(grep -vE '^\s*#|^\s*$|^[A-Za-z_][A-Za-z0-9_]*=' .env)
 if [[ -n "$bad_lines" ]]; then
     echo "⚠️ Found invalid lines in .env:"
@@ -23,8 +23,10 @@ if [[ -n "$bad_lines" ]]; then
     exit 1
 fi
 
-# Load valid environment variables
-export $(grep -E '^[A-Za-z_][A-Za-z0-9_]*=' .env | xargs)
+# Load valid environment variables safely
+set -a
+source .env
+set +a
 
 # -----------------------------------------------------------------------------
 # Web Service Check
@@ -77,4 +79,14 @@ if [[ -z "$MONGODB_URI" ]]; then
 else
     if command -v docker > /dev/null; then
         mongo_output=$(docker run --rm mongo:6.0 mongosh "$MONGODB_URI" --eval "db.runCommand({ ping: 1 })" 2>&1)
-        if [[ "$mongo_output" ==_]()]()
+        if [[ "$mongo_output" == *'"ok" : 1'* ]]; then
+            echo "🔎 MongoDB... ✅ Healthy"
+        else
+            echo "🔎 MongoDB... ❌ Unhealthy"
+            echo "   ↳ Output:"
+            echo "$mongo_output"
+        fi
+    else
+        echo "❌ docker not found. Cannot check MongoDB."
+    fi
+fi
