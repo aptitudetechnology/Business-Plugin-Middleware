@@ -794,20 +794,6 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
     """Create API blueprint with plugin support"""
     
     api = Blueprint('api', __name__)
-   # logger = logging.getLogger(__name__)
-    # ... (lines above) ...
-
-def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugin_manager: Any = None) -> Blueprint:
-    """Create API blueprint with plugin support"""
-    
-    api = Blueprint('api', __name__)
-    # REMOVE THIS LINE:
-    # logger = logging.getLogger(__name__)
-    # The 'logger' from 'loguru' is already imported at the top of the file.
-    
-    
-        
-# ... (rest of the file) ...
     @api.route('/health')
     def health():
         """API health check"""
@@ -1493,4 +1479,4 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             logger.error(f"BigCapital document sync error: {e}")
             return jsonify({'success': False, 'error': str(e)})
 
-    # ...existing code...
+    return api
