@@ -5,110 +5,75 @@ networks:
     external: true
 
 services:
-  bigcapital-mariadb:
+  mariadb:
     image: mariadb:10.6
     container_name: bigcapital-mariadb
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: bigcapital_root_password_change_me
-      MYSQL_DATABASE: bigcapital
-      MYSQL_USER: bigcapital
-      MYSQL_PASSWORD: bigcapital_secure_password
+      MYSQL_DATABASE: ${SYSTEM_DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
     volumes:
-      - bigcapital_mariadb:/var/lib/mysql
+      - mysql:/var/lib/mysql
     networks:
       - paperless_network
     ports:
       - "3307:3306"
 
-  bigcapital-mongo:
+  mongo:
     image: mongo:5.0
     container_name: bigcapital-mongo
     restart: unless-stopped
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: admin_password
-      MONGO_INITDB_DATABASE: bigcapital
     volumes:
-      - bigcapital_mongo:/data/db
+      - mongo:/data/db
     networks:
       - paperless_network
     ports:
       - "27018:27017"
 
-  bigcapital-redis:
+  redis:
     image: redis:7.0
     container_name: bigcapital-redis
     restart: unless-stopped
-    command: ["redis-server", "--requirepass", "bigcapital_redis_password"]
     volumes:
-      - bigcapital_redis:/data
+      - redis:/data
     networks:
       - paperless_network
     ports:
       - "6380:6379"
+
+  gotenberg:
+    image: gotenberg/gotenberg:7
+    container_name: bigcapital-gotenberg
+    restart: unless-stopped
+    networks:
+      - paperless_network
+    ports:
+      - "9000:3000"
 
   bigcapital:
     image: bigcapitalhq/server:latest
     container_name: bigcapital
     restart: unless-stopped
     depends_on:
-      - bigcapital-mariadb
-      - bigcapital-mongo
-      - bigcapital-redis
+      - mariadb
+      - mongo
+      - redis
     networks:
       - paperless_network
     ports:
       - "3000:3000"
-    environment:
-      # New Relic Configuration - DISABLE IT
-      NEW_RELIC_ENABLED: "false"
-      
-      # MongoDB Configuration (BigCapital expects MONGODB_DATABASE_URL)
-      MONGODB_DATABASE_URL: mongodb://admin:admin_password@bigcapital-mongo:27017/bigcapital?authSource=admin
-      
-      # MySQL Configuration (BigCapital expects these specific variable names)
-      DB_HOST: bigcapital-mariadb
-      DB_USER: bigcapital
-      DB_PASSWORD: bigcapital_secure_password
-      DB_ROOT_PASSWORD: root_password  # Add this if needed
-      DB_CHARSET: utf8
-      
-      # System Database
-      SYSTEM_DB_NAME: bigcapital_system
-      SYSTEM_DB_HOST: bigcapital-mariadb
-      SYSTEM_DB_USER: bigcapital
-      SYSTEM_DB_PASSWORD: bigcapital_secure_password
-      
-      # Tenant Database
-      TENANT_DB_NAME_PERFIX: bigcapital_tenant_
-      TENANT_DB_HOST: bigcapital-mariadb
-      TENANT_DB_USER: bigcapital
-      TENANT_DB_PASSWORD: bigcapital_secure_password
-      
-      # Redis Configuration
-      REDIS_HOST: bigcapital-redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: bigcapital_redis_password
-      
-      # Application Configuration
-      NODE_ENV: production
-      PORT: 3000
-      BASE_URL: http://localhost:3000
-      
-      # Security Configuration
-      JWT_SECRET: your-very-secure-jwt-secret-change-this
-      SESSION_SECRET: your-very-secure-session-secret-change-this
-      
-      # Optional: Email Configuration
-      # MAIL_HOST: smtp.gmail.com
-      # MAIL_PORT: 587
-      # MAIL_USERNAME: your-email@gmail.com
-      # MAIL_PASSWORD: your-app-password
-      # MAIL_FROM_ADDRESS: noreply@yourdomain.com
-      # MAIL_FROM_NAME: BigCapital
+    env_file:
+      - .env
 
 volumes:
-  bigcapital_mariadb:
-  bigcapital_mongo:
-  bigcapital_redis:
+  mysql:
+    name: bigcapital_mysql
+    driver: local
+  mongo:
+    name: bigcapital_mongo
+    driver: local
+  redis:
+    name: bigcapital_redis
+    driver: local
