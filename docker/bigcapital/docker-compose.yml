@@ -3,8 +3,15 @@ services:
   bigcapital:
     image: bigcapitalhq/server:latest
     container_name: bigcapital
+    restart: unless-stopped
+    depends_on:
+      - bigcapital-mariadb
+      - bigcapital-mongo
+      - bigcapital-redis
+    networks:
+      - paperless_network
     ports:
-      - "3000:3000"  # Add this line
+      - "3000:3000"
     environment:
       # New Relic Configuration - DISABLE IT
       NEW_RELIC_ENABLED: "false"
