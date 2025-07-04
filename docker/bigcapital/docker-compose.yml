@@ -7,7 +7,7 @@ services:
       - "3000:3000"  # Add this line
     environment:
       # New Relic Configuration - DISABLE IT
-      NEW_RELIC_ENABLED: false
+      NEW_RELIC_ENABLED: "false"
       
       # MongoDB Configuration (BigCapital expects MONGODB_DATABASE_URL)
       MONGODB_DATABASE_URL: mongodb://admin:admin_password@bigcapital-mongo:27017/bigcapital?authSource=admin
