@@ -3,7 +3,8 @@ services:
   bigcapital:
     image: bigcapitalhq/server:latest
     container_name: bigcapital
-    restart: unless-stopped
+    ports:
+      - "3000:3000"  # Add this line
     environment:
       # New Relic Configuration - DISABLE IT
       NEW_RELIC_ENABLED: false
