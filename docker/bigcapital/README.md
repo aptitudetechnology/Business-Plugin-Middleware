@@ -2,6 +2,49 @@
 
 This directory contains the complete setup for running BigCapital locally alongside the Business Plugin Middleware.
 
+## Prerequisites
+
+### Required Software
+- **Docker**: Version 20.10+ recommended
+- **Docker Compose**: Version 2.0+ **REQUIRED** 
+  - ⚠️ **Important**: This setup uses Docker Compose v2 syntax
+  - If you have Docker Compose v1, please upgrade to avoid compatibility issues
+
+### Docker Compose Version Check
+```bash
+# Check your current version
+docker-compose --version
+
+# Should show v2.x.x or higher
+# Example: Docker Compose version v2.21.0
+```
+
+### Upgrading Docker Compose
+If you have an older version, upgrade using one of these methods:
+
+**Option 1: Update Docker Desktop**
+- Download latest Docker Desktop from https://docker.com
+- This includes the latest Docker Compose
+
+**Option 2: Install Docker Compose v2 (Linux)**
+```bash
+# Remove old version
+sudo rm /usr/local/bin/docker-compose
+
+# Install new version
+sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+
+# Verify installation
+docker-compose --version
+```
+
+**Option 3: Use Docker's built-in compose (recommended)**
+```bash
+# Use 'docker compose' (space) instead of 'docker-compose' (hyphen)
+docker compose --version
+```
+
 ## Quick Start
 
 ```bash
@@ -200,7 +243,16 @@ docker compose exec bigcapital-mongo mongodump --uri="mongodb://bigcapital:passw
 
 ### Common Issues
 
-1. **Services won't start**:
+1. **Docker Compose version compatibility**:
+   ```bash
+   # If you see syntax errors or unsupported options
+   docker-compose --version
+   
+   # Should be v2.0+, if not, upgrade Docker Compose
+   # See Prerequisites section for upgrade instructions
+   ```
+
+2. **Services won't start**:
    ```bash
    # Check logs
    make logs-all
@@ -209,7 +261,7 @@ docker compose exec bigcapital-mongo mongodump --uri="mongodb://bigcapital:passw
    make restart
    ```
 
-2. **Database connection errors**:
+3. **Database connection errors**:
    ```bash
    # Check database health
    make health
@@ -218,7 +270,7 @@ docker compose exec bigcapital-mongo mongodump --uri="mongodb://bigcapital:passw
    docker compose restart bigcapital-mariadb
    ```
 
-3. **Out of memory**:
+4. **Out of memory**:
    ```bash
    # Check container resources
    docker stats

@@ -24,7 +24,11 @@ Based on the original [Simplified Paperless BigCapital Middleware](https://githu
 ## ⚡ Quick Start
 
 ### Prerequisites
-- **Docker** and **Docker Compose** (version 20.10+ recommended)
+- **Docker** (version 20.10+ recommended) 
+- **Docker Compose** (version 2.0+ **REQUIRED**)
+  - ⚠️ **Important**: This project uses Docker Compose v2 syntax
+  - Check version: `docker-compose --version` (should show v2.x.x)
+  - [Upgrade instructions](docker/bigcapital/README.md#upgrading-docker-compose) if needed
 - **Git** for cloning the repository
 - **At least 4GB RAM** for basic setup (8GB+ recommended with BigCapital)
 - **20GB+ free storage** for document processing and databases

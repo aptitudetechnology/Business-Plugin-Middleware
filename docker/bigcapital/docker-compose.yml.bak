@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  bigcapital-mariadb:
+    image: mariadb:10.6
+    container_name: bigcapital-mariadb
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: bigcapital_root_password_change_me
+      MYSQL_DATABASE: bigcapital
+      MYSQL_USER: bigcapital
+      MYSQL_PASSWORD: bigcapital_secure_password
+    volumes:
+      - bigcapital_mariadb:/var/lib/mysql
+    networks:
+      - paperless_network
+    ports:
+      - "3307:3306"
+
+  bigcapital-mongo:
+    image: mongo:5.0
+    container_name: bigcapital-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin_password
+      MONGO_INITDB_DATABASE: bigcapital
+    volumes:
+      - bigcapital_mongo:/data/db
+    networks:
+      - paperless_network
+    ports:
+      - "27018:27017"
+
+  bigcapital-redis:
+    image: redis:7.0
+    container_name: bigcapital-redis
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "bigcapital_redis_password"]
+    volumes:
+      - bigcapital_redis:/data
+    networks:
+      - paperless_network
+    ports:
+      - "6380:6379"
+
+  bigcapital:
+    image: bigcapitalhq/server:latest
+    container_name: bigcapital
+    restart: unless-stopped
+    environment:
+      MONGODB_URI: mongodb://admin:admin_password@bigcapital-mongo:27017/bigcapital?authSource=admin
+      MONGO_URI: mongodb://admin:admin_password@bigcapital-mongo:27017/bigcapital?authSource=admin
+      MYSQL_HOST: bigcapital-mariadb
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: bigcapital
+      MYSQL_USER: bigcapital
+      MYSQL_PASSWORD: bigcapital_secure_password
+      REDIS_HOST: bigcapital-redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: bigcapital_redis_password
+      # Add any other BigCapital env vars here
+    depends_on:
+      - bigcapital-mariadb
+      - bigcapital-mongo
+      - bigcapital-redis
+    networks:
+      - paperless_network
+    ports:
+      - "3000:3000"
+
+volumes:
+  bigcapital_mariadb:
+    driver: local
+  bigcapital_mongo:
+    driver: local
+  bigcapital_redis:
+    driver: local
+
+networks:
+  paperless_network:
+    external: true
