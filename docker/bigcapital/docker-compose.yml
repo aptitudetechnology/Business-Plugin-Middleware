@@ -1,4 +1,7 @@
-bigcapital:
+services:
+  # ... other services above ...
+  
+  bigcapital:
     image: bigcapitalhq/server:latest
     container_name: bigcapital
     restart: unless-stopped
