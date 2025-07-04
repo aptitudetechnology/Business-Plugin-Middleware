@@ -34,6 +34,7 @@ services:
     restart: unless-stopped
     volumes:
       - redis:/data
+      
     networks:
       - paperless_network
     ports:
@@ -74,6 +75,8 @@ services:
       - paperless_network
     ports:
       - "8000:80"
+    volumes: 
+      -  ./nginx.conf:/etc/nginx/conf.d/default.conf 
     environment:
       - REACT_APP_API_URL=http://bigcapital:3000
 volumes:
