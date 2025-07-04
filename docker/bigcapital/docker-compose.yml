@@ -1,9 +1,7 @@
 version: '3.8'
-
 networks:
   paperless_network:
     external: true
-
 services:
   mariadb:
     image: mariadb:10.6
@@ -20,7 +18,6 @@ services:
       - paperless_network
     ports:
       - "3307:3306"
-
   mongo:
     image: mongo:5.0
     container_name: bigcapital-mongo
@@ -31,7 +28,6 @@ services:
       - paperless_network
     ports:
       - "27018:27017"
-
   redis:
     image: redis:7.0
     container_name: bigcapital-redis
@@ -42,7 +38,6 @@ services:
       - paperless_network
     ports:
       - "6380:6379"
-
   gotenberg:
     image: gotenberg/gotenberg:7
     container_name: bigcapital-gotenberg
@@ -51,7 +46,6 @@ services:
       - paperless_network
     ports:
       - "9000:3000"
-
   bigcapital:
     image: bigcapitalhq/server:latest
     container_name: bigcapital
@@ -66,12 +60,22 @@ services:
       - "3000:3000"
     env_file:
       - .env
-    environment: 
-    - NEW_RELIC_ENABLED=false
-    - MONGODB_USE_UNIFIED_TOPOLOGY=true
-
-      
-
+    environment:
+      - NEW_RELIC_ENABLED=false
+      - MONGODB_USE_UNIFIED_TOPOLOGY=true
+  # Add the frontend webapp container
+  webapp:
+    image: bigcapitalhq/webapp:latest
+    container_name: bigcapital-webapp
+    restart: unless-stopped
+    depends_on:
+      - bigcapital
+    networks:
+      - paperless_network
+    ports:
+      - "8000:80"
+    environment:
+      - REACT_APP_API_URL=http://bigcapital:3000
 volumes:
   mysql:
     name: bigcapital_mysql
