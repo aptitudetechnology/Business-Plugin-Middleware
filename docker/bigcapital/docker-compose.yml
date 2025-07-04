@@ -1,5 +1,53 @@
+version: '3.8'
+
+networks:
+  paperless_network:
+    external: true
+
 services:
-  # ... other services above ...
+  bigcapital-mariadb:
+    image: mariadb:10.6
+    container_name: bigcapital-mariadb
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: bigcapital_root_password_change_me
+      MYSQL_DATABASE: bigcapital
+      MYSQL_USER: bigcapital
+      MYSQL_PASSWORD: bigcapital_secure_password
+    volumes:
+      - bigcapital_mariadb:/var/lib/mysql
+    networks:
+      - paperless_network
+    ports:
+      - "3307:3306"
+
+  bigcapital-mongo:
+    image: mongo:5.0
+    container_name: bigcapital-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin_password
+      MONGO_INITDB_DATABASE: bigcapital
+    volumes:
+      - bigcapital_mongo:/data/db
+    networks:
+      - paperless_network
+    ports:
+      - "27018:27017"
+
+  bigcapital-redis:
+    image: redis:7.0
+    container_name: bigcapital-redis
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "bigcapital_redis_password"]
+    volumes:
+      - bigcapital_redis:/data
+    networks:
+      - paperless_network
+    ports:
+      - "6380:6379"
+
   bigcapital:
     image: bigcapitalhq/server:latest
     container_name: bigcapital
@@ -59,3 +107,8 @@ services:
       # MAIL_PASSWORD: your-app-password
       # MAIL_FROM_ADDRESS: noreply@yourdomain.com
       # MAIL_FROM_NAME: BigCapital
+
+volumes:
+  bigcapital_mariadb:
+  bigcapital_mongo:
+  bigcapital_redis:
