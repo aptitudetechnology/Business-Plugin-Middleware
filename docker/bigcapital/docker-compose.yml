@@ -67,7 +67,7 @@ services:
     env_file:
       - .env
     environment: 
-    - NEW_RELIC_ENABLED="false"
+    - NEW_RELIC_ENABLED=false
 
       
 
