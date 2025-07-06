@@ -1,0 +1,155 @@
+# BigCapitalPy - Docker Compose Configuration
+# Python-based accounting software development environment
+# 
+# This is a development configuration. For production use, please:
+# - Remove exposed ports
+# - Use environment-specific secrets
+# - Add proper resource limits
+# - Enable SSL/TLS
+
+version: '3.8'
+
+services:
+  # BigCapitalPy Flask Application
+  bigcapitalpy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bigcapitalpy_app
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+      - bigcapitalpy_uploads:/app/uploads
+    environment:
+      - FLASK_ENV=development
+      - FLASK_APP=app.py
+      - DATABASE_URL=postgresql://bigcapital:${DB_PASSWORD:-bigcapital123}@postgres:5432/bigcapitalpy
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    networks:
+      - bigcapitalpy_network
+
+  # PostgreSQL Database (more suitable for accounting than MariaDB)
+  postgres:
+    image: postgres:15-alpine
+    container_name: bigcapitalpy_postgres
+    environment:
+      - POSTGRES_DB=bigcapitalpy
+      - POSTGRES_USER=bigcapital
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-bigcapital123}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    networks:
+      - bigcapitalpy_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bigcapital -d bigcapitalpy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis for Caching and Sessions
+  redis:
+    image: redis:7-alpine
+    container_name: bigcapitalpy_redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis123}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    networks:
+      - bigcapitalpy_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PDF Generation Service (for invoices and reports)
+  gotenberg:
+    image: gotenberg/gotenberg:7
+    container_name: bigcapitalpy_pdf
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    networks:
+      - bigcapitalpy_network
+    command:
+      - "gotenberg"
+      - "--chromium-disable-web-security"
+      - "--chromium-incognito"
+      
+
+  # Nginx Reverse Proxy (for production-like setup)
+  nginx:
+    image: nginx:alpine
+    container_name: bigcapitalpy_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./docker/nginx/bigcapitalpy.conf:/etc/nginx/conf.d/default.conf
+      - bigcapitalpy_static:/var/www/static
+    depends_on:
+      - bigcapitalpy
+    restart: unless-stopped
+    networks:
+      - bigcapitalpy_network
+
+  # Database Admin Interface (pgAdmin)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: bigcapitalpy_pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@bigcapitalpy.com}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:-admin123}
+    ports:
+      - "8080:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - bigcapitalpy_network
+    profiles:
+      - admin
+
+# Networks
+networks:
+  bigcapitalpy_network:
+    driver: bridge
+    name: bigcapitalpy_network
+
+# Volumes
+volumes:
+  postgres_data:
+    name: bigcapitalpy_postgres_data
+    driver: local
+
+  redis_data:
+    name: bigcapitalpy_redis_data
+    driver: local
+
+  pgadmin_data:
+    name: bigcapitalpy_pgadmin_data
+    driver: local
+
+  bigcapitalpy_uploads:
+    name: bigcapitalpy_uploads
+    driver: local
+
+  bigcapitalpy_static:
+    name: bigcapitalpy_static
+    driver: local
