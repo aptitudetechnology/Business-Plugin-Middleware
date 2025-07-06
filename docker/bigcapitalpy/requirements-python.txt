@@ -1,0 +1,57 @@
+# BigCapitalPy - Python Accounting Software Dependencies
+
+# Core Flask Dependencies
+Flask==2.3.3
+Werkzeug==2.3.7
+Jinja2==3.1.2
+MarkupSafe==2.1.3
+
+# Database
+Flask-SQLAlchemy==3.0.5
+Flask-Migrate==4.0.5
+SQLAlchemy==2.0.21
+psycopg2-binary==2.9.7
+
+# Authentication & Security
+Flask-Login==0.6.3
+Flask-WTF==1.1.1
+WTForms==3.0.1
+PyJWT==2.8.0
+cryptography==41.0.7
+
+# Data Processing
+pandas==2.1.1
+numpy==1.24.3
+
+# Date and Time
+python-dateutil==2.8.2
+
+# Email
+Flask-Mail==0.9.1
+
+# Environment Variables
+python-dotenv==1.0.0
+
+# PDF Generation
+reportlab==4.0.4
+WeasyPrint==60.1
+
+# Excel Support
+openpyxl==3.1.2
+xlsxwriter==3.1.3
+
+# API Documentation
+flask-restx==1.2.0
+
+# Logging
+loguru==0.7.2
+
+# Configuration
+configparser==6.0.0
+
+# Validation
+marshmallow==3.20.1
+marshmallow-sqlalchemy==0.29.0
+
+# Development Dependencies (optional)
+# flask-debugtoolbar==0.13.1
