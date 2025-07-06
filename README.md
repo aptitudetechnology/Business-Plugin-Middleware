@@ -30,9 +30,13 @@
 
 **A document processing middleware that bridges document management systems (like Paperless-NGX) with accounting platforms (like BigCapital) through a modular plugin architecture.**
 
+<p align="center">
+  <img src="https://img.shields.io/badge/python-3.8+-blue.svg" alt="Python 3.8+"/>
+  <img src="https://img.shields.io/badge/flask-2.3+-green.svg" alt="Flask 2.3+"/>
+  <img src="https://img.shields.io/badge/postgresql-15-blue.svg" alt="PostgreSQL 15"/>
+  <img src="https://img.shields.io/badge/docker-ready-blue.svg" alt="Docker Ready"/>
  <img src="https://img.shields.io/badge/license-AGPL-blue.svg" alt="AGPL License"/>
-![Docker](https://img.shields.io/badge/docker-ready-blue.svg)
-![Python](https://img.shields.io/badge/python-3.9+-blue.svg)
+</p>
 
 Based on the original [Simplified Paperless BigCapital Middleware](https://github.com/aptitudetechnology/simplified-paperless-bigcapital-middleware), this version provides a comprehensive plugin-based architecture for connecting document management systems with accounting platforms, automating the flow from document ingestion to accounting entry creation.
 
