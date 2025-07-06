@@ -1,91 +1,176 @@
+# BigCapitalPy - Docker Compose Configuration
+# Using pre-built image caston81/bigcapitalpy:latest
+# Python-based accounting software
+# 
+# This is a development configuration. For production use, please:
+# - Remove exposed ports for internal services
+# - Use environment-specific secrets
+# - Add proper resource limits
+# - Enable SSL/TLS
+# - Use Docker secrets for sensitive data
+
 version: '3.8'
-networks:
-  paperless_network:
-    external: true
+
 services:
-  mariadb:
-    image: mariadb:10.6
-    container_name: bigcapital-mariadb
-    restart: unless-stopped
+  # BigCapitalPy Flask Application
+  bigcapitalpy:
+    image: caston81/bigcapitalpy:latest
+    container_name: bigcapitalpy_app
+    ports:
+      - "5000:5000"
+    volumes:
+      - bigcapitalpy_uploads:/app/uploads
+      - bigcapitalpy_logs:/app/logs
+      - bigcapitalpy_static:/app/static
     environment:
-      MYSQL_DATABASE: ${SYSTEM_DB_NAME}
-      MYSQL_USER: ${DB_USER}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-    volumes:
-      - mysql:/var/lib/mysql
-    networks:
-      - paperless_network
-    ports:
-      - "3307:3306"
-  mongo:
-    image: mongo:5.0
-    container_name: bigcapital-mongo
+      - FLASK_ENV=production
+      - FLASK_APP=app.py
+      - DATABASE_URL=postgresql://bigcapital:${DB_PASSWORD:-bigcapital123}@postgres:5432/bigcapitalpy
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+      - SCHEMA_CHECK_MODE=warning
+      - SCHEMA_CHECK_STRICT=false
+      - SCHEMA_CHECK_ENABLED=true
+      - SCHEMA_CHECK_FAIL_ON_ERROR=false
+      - SCHEMA_CHECK_LOG_LEVEL=warning
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
-    volumes:
-      - mongo:/data/db
     networks:
-      - paperless_network
+      - bigcapitalpy_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # PostgreSQL Database (more suitable for accounting than MariaDB)
+  postgres:
+    image: postgres:15-alpine
+    container_name: bigcapitalpy_postgres
+    environment:
+      - POSTGRES_DB=bigcapitalpy
+      - POSTGRES_USER=bigcapital
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-bigcapital123}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
-      - "27018:27017"
+      - "5432:5432"
+    restart: unless-stopped
+    networks:
+      - bigcapitalpy_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bigcapital -d bigcapitalpy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Redis for Caching and Sessions
   redis:
-    image: redis:7.0
-    container_name: bigcapital-redis
-    restart: unless-stopped
+    image: redis:7-alpine
+    container_name: bigcapitalpy_redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis123}
     volumes:
-      - redis:/data
-      
-    networks:
-      - paperless_network
+      - redis_data:/data
     ports:
-      - "6380:6379"
+      - "6379:6379"
+    restart: unless-stopped
+    networks:
+      - bigcapitalpy_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PDF Generation Service (for invoices and reports)
   gotenberg:
     image: gotenberg/gotenberg:7
-    container_name: bigcapital-gotenberg
-    restart: unless-stopped
-    networks:
-      - paperless_network
-    ports:
-      - "9000:3000"
-  bigcapital:
-    image: bigcapitalhq/server:latest
-    container_name: bigcapital
-    restart: unless-stopped
-    depends_on:
-      - mariadb
-      - mongo
-      - redis
-    networks:
-      - paperless_network
+    container_name: bigcapitalpy_pdf
     ports:
       - "3000:3000"
-    env_file:
-      - .env
-    environment:
-      - NEW_RELIC_ENABLED=false
-      - MONGODB_USE_UNIFIED_TOPOLOGY=true
-  # Add the frontend webapp container
-  webapp:
-    image: bigcapitalhq/webapp:latest
-    container_name: bigcapital-webapp
     restart: unless-stopped
-    depends_on:
-      - bigcapital
     networks:
-      - paperless_network
+      - bigcapitalpy_network
+    command:
+      - "gotenberg"
+      - "--chromium-disable-web-security"
+      - "--chromium-incognito"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx Reverse Proxy (optional - for production-like setup)
+  nginx:
+    image: nginx:alpine
+    container_name: bigcapitalpy_nginx
     ports:
-      - "8000:80"
-    volumes: 
-      -  ./nginx.conf:/etc/nginx/conf.d/default.conf 
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/bigcapitalpy.conf:/etc/nginx/conf.d/default.conf:ro
+      - bigcapitalpy_static:/var/www/static:ro
+    depends_on:
+      - bigcapitalpy
+    restart: unless-stopped
+    networks:
+      - bigcapitalpy_network
+    profiles:
+      - proxy
+
+  # Database Admin Interface (pgAdmin) - optional
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: bigcapitalpy_pgadmin
     environment:
-      - REACT_APP_API_URL=http://bigcapital:3000
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@bigcapitalpy.com}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:-admin123}
+      - PGADMIN_CONFIG_SERVER_MODE=False
+    ports:
+      - "8080:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - bigcapitalpy_network
+    profiles:
+      - admin
+
+# Networks
+networks:
+  bigcapitalpy_network:
+    driver: bridge
+    name: bigcapitalpy_network
+
+# Volumes
 volumes:
-  mysql:
-    name: bigcapital_mysql
+  postgres_data:
+    name: bigcapitalpy_postgres_data
     driver: local
-  mongo:
-    name: bigcapital_mongo
+  redis_data:
+    name: bigcapitalpy_redis_data
     driver: local
-  redis:
-    name: bigcapital_redis
+  pgadmin_data:
+    name: bigcapitalpy_pgadmin_data
+    driver: local
+  bigcapitalpy_uploads:
+    name: bigcapitalpy_uploads
+    driver: local
+  bigcapitalpy_static:
+    name: bigcapitalpy_static
+    driver: local
+  bigcapitalpy_logs:
+    name: bigcapitalpy_logs
     driver: local
