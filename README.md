@@ -30,7 +30,7 @@
 
 **A document processing middleware that bridges document management systems (like Paperless-NGX) with accounting platforms (like BigCapital) through a modular plugin architecture.**
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
+ <img src="https://img.shields.io/badge/license-AGPL-blue.svg" alt="AGPL License"/>
 ![Docker](https://img.shields.io/badge/docker-ready-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.9+-blue.svg)
 
