@@ -1,14 +1,15 @@
-# Use Python 3.11 slim image
-FROM python:3.11-slim
+# Use Python 3.11 slim image based on Debian Bullseye
+FROM python:3.11-slim-bullseye
 
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies.
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     tesseract-ocr-eng \
-    libgl1-mesa-glx \
+    libgl1 \
+    libglx0 \
     libglib2.0-0 \
     libsm6 \
     libxext6 \
