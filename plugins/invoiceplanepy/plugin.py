@@ -3,14 +3,14 @@ InvoicePlane Integration Plugin
 """
 from loguru import logger
 from typing import Dict, Any, List
-from flask import Blueprint, jsonify, request, render_template_string
+from flask import Blueprint, jsonify, request, render_template_string, Response
 
-from core.base_plugin import IntegrationPlugin
+from core.base_plugin import IntegrationPlugin, WebPlugin
 from core.exceptions import IntegrationError
 from .client import InvoicePlaneClient
 
 
-class InvoicePlanePlugin(IntegrationPlugin):
+class InvoicePlanePlugin(IntegrationPlugin, WebPlugin):
     """InvoicePlane integration plugin with web interface"""
     
     def __init__(self, name: str, version: str = "1.0.0"):
@@ -318,8 +318,8 @@ class InvoicePlanePlugin(IntegrationPlugin):
                 if not invoice_html:
                     return f"Invoice {invoice_id} not found", 404
                 
-                # Return the HTML directly
-                return invoice_html
+                # Return the HTML directly with correct content type
+                return Response(invoice_html, content_type='text/html')
                 
             except Exception as e:
                 logger.error(f"Error viewing invoice {invoice_id}: {e}")

@@ -186,7 +186,7 @@
                                             {% for invoice in recent_invoices %}
                                             <tr>
                                                 <td>
-                                                    <a href="/plugins/invoiceplane/invoice/{{ invoice.id }}" target="_blank" class="text-decoration-none">
+                                                    <a href="/plugins/invoiceplanepy/invoice/{{ invoice.id }}" target="_blank" class="text-decoration-none">
                                                         <i class="fas fa-file-invoice-dollar"></i>
                                                         {{ invoice.invoice_number or invoice.number or 'N/A' }}
                                                     </a>
@@ -245,7 +245,7 @@
                                                         </div>
                                                         
                                                         {% if invoice.url_key %}
-                                                        <a href="/plugins/invoiceplane/invoice/{{ invoice.id }}" target="_blank" class="btn btn-outline-primary" title="View in InvoicePlane">
+                                                        <a href="/plugins/invoiceplanepy/invoice/{{ invoice.id }}" target="_blank" class="btn btn-outline-primary" title="View in InvoicePlane">
                                                             <i class="fas fa-external-link-alt"></i>
                                                         </a>
                                                         {% endif %}
@@ -762,7 +762,7 @@ function displayInvoiceDetails(invoiceData) {
                     <button class="btn btn-outline-success btn-sm" onclick="sendToBigCapital('${invoiceData.id}')">
                         <i class="fas fa-share"></i> Send to BigCapitalPy
                     </button>
-                    ${invoiceData.url_key ? `<a href="/plugins/invoiceplane/invoice/${invoiceData.id}" target="_blank" class="btn btn-outline-primary btn-sm"><i class="fas fa-external-link-alt"></i> View in InvoicePlane</a>` : ''}
+                    ${invoiceData.url_key ? `<a href="/plugins/invoiceplanepy/invoice/${invoiceData.id}" target="_blank" class="btn btn-outline-primary btn-sm"><i class="fas fa-external-link-alt"></i> View in InvoicePlane</a>` : ''}
                 </div>
             </div>
         </div>
