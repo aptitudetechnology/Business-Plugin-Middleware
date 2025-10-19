@@ -219,6 +219,15 @@ class OCRProcessorPlugin(ProcessingPlugin):
         """Get supported file formats"""
         return self._supported_formats
     
+    def get_menu_items(self) -> List[Dict[str, str]]:
+        """
+        Get menu items for the web interface
+        
+        Returns:
+            List of menu item dictionaries
+        """
+        return []
+    
     def validate_config(self, config: Dict[str, Any]) -> bool:
         """Validate OCR processor configuration"""
         # OCR processor doesn't require specific configuration

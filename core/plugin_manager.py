@@ -82,12 +82,14 @@ class PluginManager:
             
             # Find the plugin class
             plugin_class = None
+            import inspect
             for attr_name in dir(module):
                 attr = getattr(module, attr_name)
                 if (isinstance(attr, type) and 
                     issubclass(attr, BasePlugin) and 
                     attr != BasePlugin and
-                    not attr.__name__.startswith('Base')):
+                    not attr.__name__.startswith('Base') and
+                    not inspect.isabstract(attr)):
                     plugin_class = attr
                     break
             

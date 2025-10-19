@@ -135,7 +135,15 @@ class Config:
             
             if os.path.exists(plugins_config_path):
                 with open(plugins_config_path, 'r') as f:
-                    self._plugin_configs = json.load(f)
+                    loaded_config = json.load(f)
+                
+                # Handle nested structure with "plugins" key
+                if 'plugins' in loaded_config and isinstance(loaded_config['plugins'], dict):
+                    self._plugin_configs = loaded_config['plugins']
+                else:
+                    # Assume flat structure
+                    self._plugin_configs = loaded_config
+                
                 logger.info(f"Plugin configurations loaded from: {plugins_config_path}")
             
             # Also check for individual plugin config files

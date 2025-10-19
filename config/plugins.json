@@ -8,6 +8,23 @@
       "sync_interval": 3600,
       "retry_attempts": 3
     },
+    "bigcapitalpy": {
+      "enabled": true,
+      "api_key": "your-bigcapital-api-key-here",
+      "base_url": "https://api.bigcapital.ly",
+      "timeout": 30,
+      "auto_sync": false,
+      "default_due_days": 30,
+      "cache_timeout": 3600,
+      "retry_attempts": 3,
+      "sync_batch_size": 10
+    },
+    "invoiceplanepy": {
+      "enabled": true,
+      "base_url": "http://invoiceplane:8000",
+      "api_key": "your-invoiceplane-api-key-here",
+      "timeout": 30
+    },
     "ocr_processor": {
       "enabled": true,
       "tesseract_path": "/usr/bin/tesseract",
