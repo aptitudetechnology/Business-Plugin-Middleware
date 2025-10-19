@@ -159,6 +159,19 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
                     except Exception as e:
                         logger.error(f"Failed to get documents from Paperless-NGX: {e}")
             
+            # Get recent invoices from InvoicePlane plugin if available
+            recent_invoices = []
+            invoiceplane_plugin = None
+            
+            if plugin_manager:
+                invoiceplane_plugin = plugin_manager.get_plugin('invoiceplanepy')
+                if invoiceplane_plugin and hasattr(invoiceplane_plugin, 'client') and invoiceplane_plugin.client:
+                    try:
+                        recent_invoices = invoiceplane_plugin.client.get_recent_invoices(limit=20)
+                        logger.info(f"Retrieved {len(recent_invoices)} invoices from InvoicePlane")
+                    except Exception as e:
+                        logger.error(f"Failed to get invoices from InvoicePlane: {e}")
+            
             # Fallback: Get documents from local database
             if not recent_documents and db_manager:
                 try:
@@ -186,8 +199,10 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             
             return render_template('documents.html', 
                                    recent_documents=recent_documents,
+                                   recent_invoices=recent_invoices,
                                    processing_stats=processing_stats,
-                                   paperless_available=paperless_plugin is not None)
+                                   paperless_available=paperless_plugin is not None,
+                                   invoiceplane_available=invoiceplane_plugin is not None)
             
         except Exception as e:
             logger.error(f"Documents page error: {e}")
@@ -1261,6 +1276,86 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             
         except Exception as e:
             logger.error(f"Failed to get debug info for plugin {plugin_name}: {e}")
+            return jsonify({'error': str(e)}), 500
+
+    @api.route('/invoiceplane/invoices/<int:invoice_id>', methods=['GET'])
+    def get_invoice_details(invoice_id):
+        """Get detailed information for an InvoicePlane invoice"""
+        try:
+            logger.info(f"Fetching invoice details for invoice ID: {invoice_id}")
+
+            if not plugin_manager:
+                logger.error("Plugin manager not available")
+                return jsonify({'error': 'Plugin manager not available'}), 500
+
+            # Get InvoicePlane plugin
+            invoiceplane_plugin = plugin_manager.get_plugin('invoiceplanepy')
+            if not invoiceplane_plugin:
+                logger.error("InvoicePlane plugin not found")
+                return jsonify({'error': 'InvoicePlane plugin not available'}), 404
+
+            if not hasattr(invoiceplane_plugin, 'client') or not invoiceplane_plugin.client:
+                logger.error("InvoicePlane plugin client not initialized")
+                return jsonify({'error': 'InvoicePlane plugin not properly configured'}), 500
+
+            # Get invoice details
+            invoice = invoiceplane_plugin.client.get_invoice(invoice_id)
+
+            logger.info(f"Successfully retrieved invoice details for ID: {invoice_id}")
+
+            return jsonify({
+                'success': True,
+                'invoice': invoice
+            })
+
+        except Exception as e:
+            logger.error(f"Failed to get invoice details for invoice {invoice_id}: {e}")
+            return jsonify({'error': str(e)}), 500
+
+    @api.route('/bigcapital/sync/invoiceplane/<int:invoice_id>', methods=['POST'])
+    def sync_invoice_to_bigcapital(invoice_id):
+        """Sync an InvoicePlane invoice to BigCapital"""
+        try:
+            logger.info(f"Syncing InvoicePlane invoice {invoice_id} to BigCapital")
+
+            if not plugin_manager:
+                logger.error("Plugin manager not available")
+                return jsonify({'error': 'Plugin manager not available'}), 500
+
+            # Get InvoicePlane plugin
+            invoiceplane_plugin = plugin_manager.get_plugin('invoiceplanepy')
+            if not invoiceplane_plugin:
+                logger.error("InvoicePlane plugin not found")
+                return jsonify({'error': 'InvoicePlane plugin not available'}), 404
+
+            if not hasattr(invoiceplane_plugin, 'client') or not invoiceplane_plugin.client:
+                logger.error("InvoicePlane plugin client not initialized")
+                return jsonify({'error': 'InvoicePlane plugin not properly configured'}), 500
+
+            # Get BigCapital plugin
+            bigcapital_plugin = plugin_manager.get_plugin('bigcapitalpy')
+            if not bigcapital_plugin:
+                logger.error("BigCapital plugin not found")
+                return jsonify({'error': 'BigCapital plugin not available'}), 404
+
+            # Get invoice details from InvoicePlane
+            invoice = invoiceplane_plugin.client.get_invoice(invoice_id)
+            if not invoice:
+                return jsonify({'error': f'Invoice {invoice_id} not found in InvoicePlane'}), 404
+
+            # Sync invoice to BigCapital
+            sync_result = bigcapital_plugin.sync_invoice_from_invoiceplane(invoice)
+
+            logger.info(f"Successfully synced invoice {invoice_id} to BigCapital")
+
+            return jsonify({
+                'success': True,
+                'message': f'Invoice {invoice_id} synced successfully to BigCapital',
+                'sync_result': sync_result
+            })
+
+        except Exception as e:
+            logger.error(f"Failed to sync invoice {invoice_id} to BigCapital: {e}")
             return jsonify({'error': str(e)}), 500
 
     return api

@@ -74,85 +74,194 @@
             <!-- Recent Documents -->
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-list"></i> Recent Documents</h5>
+                    <ul class="nav nav-tabs card-header-tabs" id="documentsTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="paperless-tab" data-bs-toggle="tab" data-bs-target="#paperless-documents" type="button" role="tab" aria-controls="paperless-documents" aria-selected="true">
+                                <i class="fas fa-file-alt"></i> Paperless-NGX Documents
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="invoiceplane-tab" data-bs-toggle="tab" data-bs-target="#invoiceplane-invoices" type="button" role="tab" aria-controls="invoiceplane-invoices" aria-selected="false">
+                                <i class="fas fa-file-invoice-dollar"></i> InvoicePlane Invoices
+                            </button>
+                        </li>
+                    </ul>
                 </div>
                 <div class="card-body">
-                    {% if recent_documents %}
-                        <div class="table-responsive">
-                            <table class="table table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Title</th>
-                                        <th>Correspondent</th>
-                                        <th>Document Type</th>
-                                        <th>Created</th>
-                                        <th>Tags</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for document in recent_documents %}
-                                    <tr>
-                                        <td>
-                                            <i class="fas fa-file-alt"></i>
-                                            {{ document.title or document.original_file_name or 'Untitled Document' }}
-                                        </td>
-                                        <td>{{ document.correspondent_name or 'None' }}</td>
-                                        <td>{{ document.document_type_name or 'None' }}</td>
-                                        <td>{{ document.created_formatted or document.created | datetime }}</td>
-                                        <td>
-                                            {% if document.tag_names %}
-                                                {% for tag in document.tag_names %}
-                                                    <span class="badge bg-secondary me-1">{{ tag }}</span>
-                                                {% endfor %}
-                                            {% else %}
-                                                <span class="text-muted">No tags</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            <div class="btn-group btn-group-sm">
-                                                {% if document.preview_url %}
-                                                <a href="{{ document.preview_url }}" target="_blank" class="btn btn-outline-primary" title="View">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                                {% endif %}
-                                                {% if document.download_url %}
-                                                <a href="{{ document.download_url }}" class="btn btn-outline-secondary" title="Download">
-                                                    <i class="fas fa-download"></i>
-                                                </a>
-                                                {% endif %}
-                                                <button class="btn btn-outline-success" title="View OCR Content" onclick="showOCRContent('{{ document.id }}')">
-                                                    <i class="fas fa-search-plus"></i>
-                                                </button>
-                                                <button class="btn btn-outline-warning btn-sm" title="View Raw OCR" onclick="showRawOCRContent('{{ document.id }}')">
-                                                    <i class="fas fa-code"></i>
-                                                </button>
-                                                <button class="btn btn-outline-info" title="Details" onclick="showDocumentDetails('{{ document.id }}')">
-                                                    <i class="fas fa-info-circle"></i>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    {% else %}
-                        <div class="text-center py-5">
-                            <i class="fas fa-folder-open fa-4x text-muted mb-3"></i>
-                            <h5 class="text-muted">No documents found</h5>
-                            {% if paperless_available %}
-                                <p class="text-muted">No documents found in Paperless-NGX.</p>
-                                <p class="text-muted small">Make sure your Paperless-NGX instance has documents and the plugin is configured correctly.</p>
+                    <div class="tab-content" id="documentsTabsContent">
+                        <!-- Paperless-NGX Documents Tab -->
+                        <div class="tab-pane fade show active" id="paperless-documents" role="tabpanel" aria-labelledby="paperless-tab">
+                            {% if recent_documents %}
+                                <div class="table-responsive">
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Title</th>
+                                                <th>Correspondent</th>
+                                                <th>Document Type</th>
+                                                <th>Created</th>
+                                                <th>Tags</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for document in recent_documents %}
+                                            <tr>
+                                                <td>
+                                                    <i class="fas fa-file-alt"></i>
+                                                    {{ document.title or document.original_file_name or 'Untitled Document' }}
+                                                </td>
+                                                <td>{{ document.correspondent_name or 'None' }}</td>
+                                                <td>{{ document.document_type_name or 'None' }}</td>
+                                                <td>{{ document.created_formatted or document.created | datetime }}</td>
+                                                <td>
+                                                    {% if document.tag_names %}
+                                                        {% for tag in document.tag_names %}
+                                                            <span class="badge bg-secondary me-1">{{ tag }}</span>
+                                                        {% endfor %}
+                                                    {% else %}
+                                                        <span class="text-muted">No tags</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <div class="btn-group btn-group-sm">
+                                                        {% if document.preview_url %}
+                                                        <a href="{{ document.preview_url }}" target="_blank" class="btn btn-outline-primary" title="View">
+                                                            <i class="fas fa-eye"></i>
+                                                        </a>
+                                                        {% endif %}
+                                                        {% if document.download_url %}
+                                                        <a href="{{ document.download_url }}" class="btn btn-outline-secondary" title="Download">
+                                                            <i class="fas fa-download"></i>
+                                                        </a>
+                                                        {% endif %}
+                                                        <button class="btn btn-outline-success" title="View OCR Content" onclick="showOCRContent('{{ document.id }}')">
+                                                            <i class="fas fa-search-plus"></i>
+                                                        </button>
+                                                        <button class="btn btn-outline-warning btn-sm" title="View Raw OCR" onclick="showRawOCRContent('{{ document.id }}')">
+                                                            <i class="fas fa-code"></i>
+                                                        </button>
+                                                        <button class="btn btn-outline-info" title="Details" onclick="showDocumentDetails('{{ document.id }}')">
+                                                            <i class="fas fa-info-circle"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
                             {% else %}
-                                <p class="text-muted">Paperless-NGX plugin is not available or not configured.</p>
-                                <p class="text-muted small">Configure the Paperless-NGX plugin in the <a href="{{ url_for('web.plugins') }}">Plugins</a> section.</p>
+                                <div class="text-center py-5">
+                                    <i class="fas fa-folder-open fa-4x text-muted mb-3"></i>
+                                    <h5 class="text-muted">No documents found</h5>
+                                    {% if paperless_available %}
+                                        <p class="text-muted">No documents found in Paperless-NGX.</p>
+                                        <p class="text-muted small">Make sure your Paperless-NGX instance has documents and the plugin is configured correctly.</p>
+                                    {% else %}
+                                        <p class="text-muted">Paperless-NGX plugin is not available or not configured.</p>
+                                        <p class="text-muted small">Configure the Paperless-NGX plugin in the <a href="{{ url_for('web.plugins') }}">Plugins</a> section.</p>
+                                    {% endif %}
+                                </div>
                             {% endif %}
+                        </div>
+                        
+                        <!-- InvoicePlane Invoices Tab -->
+                        <div class="tab-pane fade" id="invoiceplane-invoices" role="tabpanel" aria-labelledby="invoiceplane-tab">
+                            {% if recent_invoices %}
+                                <div class="table-responsive">
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Invoice Number</th>
+                                                <th>Client</th>
+                                                <th>Status</th>
+                                                <th>Issue Date</th>
+                                                <th>Due Date</th>
+                                                <th>Total</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for invoice in recent_invoices %}
+                                            <tr>
+                                                <td>
+                                                    <i class="fas fa-file-invoice-dollar"></i>
+                                                    {{ invoice.invoice_number or invoice.number or 'N/A' }}
+                                                </td>
+                                                <td>
+                                                    {% if invoice.client %}
+                                                        {{ invoice.client.name or 'Unknown' }}
+                                                    {% else %}
+                                                        {{ invoice.client_name or 'Unknown' }}
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% set status = invoice.status_name or invoice.status or 'unknown' %}
+                                                    {% if status == 'paid' %}
+                                                        <span class="badge bg-success">{{ status.title() }}</span>
+                                                    {% elif status == 'sent' %}
+                                                        <span class="badge bg-primary">{{ status.title() }}</span>
+                                                    {% elif status == 'overdue' %}
+                                                        <span class="badge bg-danger">{{ status.title() }}</span>
+                                                    {% elif status == 'draft' %}
+                                                        <span class="badge bg-secondary">{{ status.title() }}</span>
+                                                    {% else %}
+                                                        <span class="badge bg-warning">{{ status.title() }}</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ invoice.issue_date or invoice.date_created | datetime }}</td>
+                                                <td>{{ invoice.due_date or invoice.date_due | datetime }}</td>
+                                                <td>
+                                                    {% if invoice.total %}
+                                                        ${{ "%.2f"|format(invoice.total) }}
+                                                    {% elif invoice.invoice_total %}
+                                                        ${{ "%.2f"|format(invoice.invoice_total) }}
+                                                    {% else %}
+                                                        N/A
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <div class="btn-group btn-group-sm">
+                                                        <button class="btn btn-outline-info" title="Details" onclick="showInvoiceDetails('{{ invoice.id }}')">
+                                                            <i class="fas fa-info-circle"></i>
+                                                        </button>
+                                                        <button class="btn btn-outline-success" title="Sync to BigCapital" onclick="syncInvoiceToBigCapital('{{ invoice.id }}')">
+                                                            <i class="fas fa-sync"></i>
+                                                        </button>
+                                                        {% if invoice.url_key %}
+                                                        <a href="/plugins/invoiceplane/invoice/{{ invoice.id }}" target="_blank" class="btn btn-outline-primary" title="View in InvoicePlane">
+                                                            <i class="fas fa-external-link-alt"></i>
+                                                        </a>
+                                                        {% endif %}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <div class="text-center py-5">
+                                    <i class="fas fa-file-invoice-dollar fa-4x text-muted mb-3"></i>
+                                    <h5 class="text-muted">No invoices found</h5>
+                                    {% if invoiceplane_available %}
+                                        <p class="text-muted">No invoices found in InvoicePlane.</p>
+                                        <p class="text-muted small">Make sure your InvoicePlane instance has invoices and the plugin is configured correctly.</p>
+                                    {% else %}
+                                        <p class="text-muted">InvoicePlane plugin is not available or not configured.</p>
+                                        <p class="text-muted small">Configure the InvoicePlane plugin in the <a href="{{ url_for('web.plugins') }}">Plugins</a> section.</p>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
                             <a href="{{ url_for('web.upload_document') }}" class="btn btn-primary">
                                 <i class="fas fa-plus"></i> Upload Document
                             </a>
                         </div>
-                    {% endif %}
                 </div>
             </div>
 
@@ -309,6 +418,33 @@
                 <div id="detailsError" style="display: none;" class="alert alert-danger">
                     <i class="fas fa-exclamation-triangle"></i>
                     <span id="detailsErrorMessage">Failed to load document details.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Invoice Details Modal -->
+<div class="modal fade" id="invoiceDetailsModal" tabindex="-1" aria-labelledby="invoiceDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="invoiceDetailsModalLabel">Invoice Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="invoiceDetailsLoadingSpinner" class="text-center py-3">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading invoice details...</p>
+                </div>
+                <div id="invoiceDetailsContent" style="display: none;">
+                    <!-- Invoice details will be populated here -->
+                </div>
+                <div id="invoiceDetailsError" style="display: none;" class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span id="invoiceDetailsErrorMessage">Failed to load invoice details.</span>
                 </div>
             </div>
         </div>
@@ -525,6 +661,238 @@ function displayDocumentDetails(documentData) {
             </div>
         </div>
     `;
+}
+
+// InvoicePlane Invoice Functions
+function showInvoiceDetails(invoiceId) {
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('invoiceDetailsModal'));
+    modal.show();
+    
+    // Reset modal state
+    document.getElementById('invoiceDetailsLoadingSpinner').style.display = 'block';
+    document.getElementById('invoiceDetailsContent').style.display = 'none';
+    document.getElementById('invoiceDetailsError').style.display = 'none';
+    
+    // Fetch invoice details
+    fetch(`/api/invoiceplane/invoices/${invoiceId}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            document.getElementById('invoiceDetailsLoadingSpinner').style.display = 'none';
+            
+            if (data.success) {
+                displayInvoiceDetails(data.invoice);
+                document.getElementById('invoiceDetailsContent').style.display = 'block';
+            } else {
+                let errorMsg = data.error || 'Failed to load invoice details.';
+                
+                // Show specific guidance for API issues
+                if (errorMsg.includes('API') || errorMsg.includes('authentication')) {
+                    errorMsg += '\n\nTo fix this:\n1. Check your InvoicePlane API configuration\n2. Verify the API URL and credentials\n3. Ensure the InvoicePlane plugin is properly configured';
+                }
+                
+                document.getElementById('invoiceDetailsErrorMessage').textContent = errorMsg;
+                document.getElementById('invoiceDetailsError').style.display = 'block';
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching invoice details:', error);
+            document.getElementById('invoiceDetailsLoadingSpinner').style.display = 'none';
+            
+            let errorMsg = 'Network error while fetching invoice details.';
+            if (error.message) {
+                errorMsg += ` (${error.message})`;
+            }
+            
+            document.getElementById('invoiceDetailsErrorMessage').textContent = errorMsg;
+            document.getElementById('invoiceDetailsError').style.display = 'block';
+        });
+}
+
+function displayInvoiceDetails(invoiceData) {
+    const content = document.getElementById('invoiceDetailsContent');
+    content.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Invoice Information</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>Invoice Number:</strong></td><td>${invoiceData.invoice_number || invoiceData.number || 'N/A'}</td></tr>
+                    <tr><td><strong>Status:</strong></td><td>
+                        <span class="badge bg-${getStatusColor(invoiceData.status_name || invoiceData.status)}">
+                            ${invoiceData.status_name || invoiceData.status || 'Unknown'}
+                        </span>
+                    </td></tr>
+                    <tr><td><strong>Issue Date:</strong></td><td>${invoiceData.issue_date || invoiceData.date_created || 'N/A'}</td></tr>
+                    <tr><td><strong>Due Date:</strong></td><td>${invoiceData.due_date || invoiceData.date_due || 'N/A'}</td></tr>
+                    <tr><td><strong>Total:</strong></td><td>$${invoiceData.total || invoiceData.invoice_total || '0.00'}</td></tr>
+                    <tr><td><strong>Tax:</strong></td><td>$${invoiceData.tax_total || '0.00'}</td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6>Client Information</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>Name:</strong></td><td>${invoiceData.client ? invoiceData.client.name : (invoiceData.client_name || 'N/A')}</td></tr>
+                    <tr><td><strong>Email:</strong></td><td>${invoiceData.client ? invoiceData.client.email : (invoiceData.client_email || 'N/A')}</td></tr>
+                    <tr><td><strong>Phone:</strong></td><td>${invoiceData.client ? invoiceData.client.phone : (invoiceData.client_phone || 'N/A')}</td></tr>
+                    <tr><td><strong>Address:</strong></td><td>${invoiceData.client ? invoiceData.client.address : (invoiceData.client_address || 'N/A')}</td></tr>
+                </table>
+                
+                <h6>Actions</h6>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-success btn-sm" onclick="syncInvoiceToBigCapital('${invoiceData.id}')">
+                        <i class="fas fa-sync"></i> Sync to BigCapital
+                    </button>
+                    ${invoiceData.url_key ? `<a href="/plugins/invoiceplane/invoice/${invoiceData.id}" target="_blank" class="btn btn-outline-primary btn-sm"><i class="fas fa-external-link-alt"></i> View in InvoicePlane</a>` : ''}
+                </div>
+            </div>
+        </div>
+        
+        ${invoiceData.items && invoiceData.items.length > 0 ? `
+        <div class="row mt-3">
+            <div class="col-12">
+                <h6>Invoice Items</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Description</th>
+                                <th>Quantity</th>
+                                <th>Price</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${invoiceData.items.map(item => `
+                                <tr>
+                                    <td>${item.name || item.description || 'N/A'}</td>
+                                    <td>${item.qty || item.quantity || 1}</td>
+                                    <td>$${item.price || '0.00'}</td>
+                                    <td>$${item.total || '0.00'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        ` : ''}
+    `;
+}
+
+function syncInvoiceToBigCapital(invoiceId) {
+    // Show loading state
+    const button = event.target.closest('button');
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing...';
+    button.disabled = true;
+    
+    // Call sync API
+    fetch(`/api/bigcapital/sync/invoiceplane/${invoiceId}`, {
+        method: 'POST'
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Show success
+            button.innerHTML = '<i class="fas fa-check"></i> Synced!';
+            button.classList.remove('btn-outline-success');
+            button.classList.add('btn-success');
+            
+            // Show success message
+            showToast('Invoice synced successfully to BigCapital!', 'success');
+            
+            // Reset button after delay
+            setTimeout(() => {
+                button.innerHTML = originalText;
+                button.classList.remove('btn-success');
+                button.classList.add('btn-outline-success');
+                button.disabled = false;
+            }, 3000);
+        } else {
+            throw new Error(data.error || 'Sync failed');
+        }
+    })
+    .catch(error => {
+        console.error('Error syncing invoice:', error);
+        
+        // Show error
+        button.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Failed';
+        button.classList.remove('btn-outline-success');
+        button.classList.add('btn-danger');
+        
+        // Show error message
+        showToast(`Failed to sync invoice: ${error.message}`, 'error');
+        
+        // Reset button after delay
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.classList.remove('btn-danger');
+            button.classList.add('btn-outline-success');
+            button.disabled = false;
+        }, 3000);
+    });
+}
+
+function getStatusColor(status) {
+    if (!status) return 'secondary';
+    status = status.toLowerCase();
+    
+    switch (status) {
+        case 'paid': return 'success';
+        case 'sent': return 'primary';
+        case 'overdue': return 'danger';
+        case 'draft': return 'secondary';
+        case 'viewed': return 'info';
+        default: return 'warning';
+    }
+}
+
+function showToast(message, type = 'info') {
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-white bg-${type === 'error' ? 'danger' : type} border-0`;
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'assertive');
+    toast.setAttribute('aria-atomic', 'true');
+    
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">${message}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+    
+    // Add to toast container
+    const container = document.getElementById('toastContainer') || createToastContainer();
+    container.appendChild(toast);
+    
+    // Show toast
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+    
+    // Remove after hide
+    toast.addEventListener('hidden.bs.toast', () => {
+        toast.remove();
+    });
+}
+
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.className = 'toast-container position-fixed top-0 end-0 p-3';
+    container.style.zIndex = '9999';
+    document.body.appendChild(container);
+    return container;
 }
 </script>
 {% endblock %}

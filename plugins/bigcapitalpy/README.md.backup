@@ -1,0 +1,864 @@
+# BigCapital Plugin
+
+**A plugin for integrating BigCapital accounting software with InvoicePlanePy for automated invoice synchronization.**
+
+![Status](https://img.shields.io/badge/status-beta-blue.svg)
+![Features](https://img.shields.io/badge/features-invoice--sync-green.svg)
+![Integration](https://img.shields.io/badge/integration-invoiceplanepy-orange.svg)
+
+## Overview
+
+This plugin integrates with the Business-Plugin-Middleware to provide seamless synchronization of invoices from InvoicePlanePy to BigCapital accounting software. It automatically downloads invoices from InvoicePlanePy and creates corresponding records in BigCapital, including contacts, invoices, and line items.
+
+## Features
+
+### 📄 **Invoice Synchronization**
+- ✅ **Automatic Invoice Sync**: Download invoices from InvoicePlanePy and sync to BigCapital
+- ✅ **Contact Management**: Automatically create or match contacts in BigCapital
+- ✅ **Invoice Status Mapping**: Map InvoicePlanePy statuses to BigCapital invoice states
+- ✅ **Data Transformation**: Convert InvoicePlanePy data format to BigCapital format
+- ✅ **Error Handling**: Comprehensive error handling and reporting
+
+### 🔗 **Plugin Architecture**
+- ✅ **Middleware Integration**: Seamless integration with Business-Plugin-Middleware
+- ✅ **API Clients**: Robust clients for both BigCapital and InvoicePlanePy APIs
+- ✅ **Data Models**: Well-defined models for invoices, contacts, and metadata
+- ✅ **Configuration**: Flexible configuration options for both systems
+
+### 📊 **Sync Statistics**
+- ✅ **Success/Failure Tracking**: Monitor sync success rates
+- ✅ **Performance Metrics**: Track processing times and statistics
+- ✅ **Health Monitoring**: Plugin health and status monitoring
+
+## Installation
+
+1. Place the `bigcapitalpy` folder in your `plugins/` directory
+2. Configure the plugin in your middleware configuration
+3. Ensure InvoicePlanePy plugin is also installed and configured
+4. Restart the middleware to load the plugin
+
+## Configuration
+
+Create or update `config/plugins.json` in your middleware configuration:
+
+```json
+{
+  "bigcapitalpy": {
+    "enabled": true,
+    "api_key": "YOUR_BIGCAPITAL_API_KEY",
+    "base_url": "https://api.bigcapital.ly",
+    "timeout": 30,
+    "organization_id": "YOUR_ORGANIZATION_ID"
+  },
+  "invoiceplanepy": {
+    "enabled": true,
+    "api_key": "YOUR_INVOICEPLANE_API_KEY",
+    "base_url": "https://your-invoiceplane-instance.com",
+    "timeout": 30
+  }
+}
+```
+
+### Configuration Parameters
+
+#### BigCapital Configuration
+- `api_key`: Your BigCapital API key (required)
+- `base_url`: BigCapital API base URL (default: "https://api.bigcapital.ly")
+- `timeout`: API request timeout in seconds (default: 30)
+- `organization_id`: Your BigCapital organization ID (required)
+
+#### InvoicePlanePy Configuration
+- `api_key`: Your InvoicePlanePy API key (required)
+- `base_url`: InvoicePlanePy instance base URL (required)
+- `timeout`: API request timeout in seconds (default: 30)
+
+## Usage
+
+### Web Interface
+
+The plugin provides a web interface accessible through the middleware:
+
+1. Navigate to `/plugins/bigcapitalpy` in your middleware
+2. View sync statistics and recent activity
+3. Manually trigger invoice synchronization
+4. Monitor plugin health and configuration
+
+### API Integration
+
+#### Sync Invoice from InvoicePlanePy
+
+```http
+POST /api/bigcapital/sync/invoiceplane/{invoice_id}
+```
+
+Syncs a specific invoice from InvoicePlanePy to BigCapital.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Invoice synced successfully to BigCapital",
+  "sync_result": {
+    "invoice_id": "INV-001",
+    "bigcapital_invoice_id": 12345,
+    "contact_created": true,
+    "status": "completed"
+  }
+}
+```
+
+#### Bulk Sync Invoices
+
+```http
+POST /api/bigcapital/sync/bulk
+Content-Type: application/json
+
+{
+  "invoice_ids": ["INV-001", "INV-002", "INV-003"],
+  "create_contacts": true,
+  "update_existing": false
+}
+```
+
+### Programmatic Usage
+
+```python
+from plugins.bigcapitalpy.plugin import BigCapitalPlugin
+
+# Initialize plugin
+plugin = BigCapitalPlugin("bigcapitalpy")
+plugin.initialize(app_context)
+
+# Sync specific invoice
+result = plugin.sync_invoice_from_invoiceplane(invoice_data)
+print(f"Sync result: {result}")
+```
+
+## Data Mapping
+
+### Invoice Fields Mapping
+
+| InvoicePlanePy Field | BigCapital Field | Notes |
+|---------------------|------------------|-------|
+| `invoice_number` | `invoice_number` | Direct mapping |
+| `issue_date` | `invoice_date` | Date conversion |
+| `due_date` | `due_date` | Date conversion |
+| `total` | `amount` | Numeric conversion |
+| `tax_total` | `tax_amount` | Tax calculation |
+| `client.name` | `contact.name` | Contact creation |
+| `items[]` | `entries[]` | Line item mapping |
+
+### Status Mapping
+
+| InvoicePlanePy Status | BigCapital Status |
+|----------------------|-------------------|
+| `paid` | `paid` |
+| `sent` | `sent` |
+| `overdue` | `overdue` |
+| `draft` | `draft` |
+| `viewed` | `sent` |
+
+## Error Handling
+
+The plugin includes comprehensive error handling:
+
+- **API Connection Errors**: Automatic retry with exponential backoff
+- **Data Validation Errors**: Detailed validation messages
+- **Authentication Errors**: Clear authentication failure messages
+- **Rate Limiting**: Built-in rate limit handling
+- **Partial Failures**: Continue processing other items on individual failures
+
+## Monitoring
+
+### Health Checks
+
+```http
+GET /api/plugins/bigcapitalpy/health
+```
+
+Returns plugin health status and recent sync statistics.
+
+### Statistics
+
+```http
+GET /api/plugins/bigcapitalpy/stats
+```
+
+Returns detailed sync statistics including:
+- Total invoices synced
+- Success/failure rates
+- Processing times
+- Error counts by type
+
+## Troubleshooting
+
+### Common Issues
+
+1. **API Key Invalid**
+   - Verify your BigCapital API key is correct
+   - Check InvoicePlanePy API key format
+
+2. **Connection Timeouts**
+   - Increase timeout values in configuration
+   - Check network connectivity
+
+3. **Data Mapping Errors**
+   - Review InvoicePlanePy data structure
+   - Check BigCapital field requirements
+
+4. **Contact Creation Failures**
+   - Verify contact data completeness
+   - Check for duplicate contact handling
+
+### Debug Mode
+
+Enable debug logging by setting the log level to DEBUG in your middleware configuration.
+
+## Development
+
+### Testing
+
+Run the test suite:
+
+```bash
+python -m pytest tests/test_bigcapital_plugin.py -v
+```
+
+### Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new functionality
+4. Ensure all tests pass
+5. Submit a pull request
+
+## License
+
+This plugin is part of the Business-Plugin-Middleware project. See the main project license for details.
+
+## Support
+
+For support and questions:
+- Check the middleware logs for error details
+- Review the API documentation
+- Create an issue in the project repository
+
+### Syncing Invoices from InvoicePlane    'document_path': '/path/to/document.pdf'
+
+})
+
+The plugin provides methods to sync invoices from InvoicePlane to BigCapital:
+
+if result['success']:
+
+```python    print("Markdown:", result['markdown'])
+
+from plugins.bigcapitalpy.plugin import BigCapitalPluginelse:
+
+    print("Error:", result['error'])
+
+plugin = BigCapitalPlugin("bigcapital")```
+
+plugin.initialize({'config': config})
+
+### API Integration
+
+# Sync a specific invoice by ID
+
+result = plugin.sync_invoice_from_invoiceplane(invoice_id=123)The plugin provides a web interface at `/plugins/pdf2md/` with:
+
+
+
+if result['success']:- Dashboard showing processing statistics
+
+    print("Invoice synced successfully:", result['bigcapital_invoice_id'])- Test connection functionality
+
+else:- Real-time status monitoring
+
+    print("Error:", result['error'])
+
+## API Reference
+
+# Sync recent invoices
+
+recent_invoices = plugin.sync_recent_invoices_from_invoiceplane(days=7)### PDF2MDClient
+
+print(f"Synced {len(recent_invoices)} invoices")
+
+``````python
+
+from plugins.bigcapitalpy.client import PDF2MDClient
+
+### Web Interface
+
+client = PDF2MDClient(api_url="http://localhost:5000")
+
+The plugin provides a web interface at `/plugins/bigcapital/` with:result = client.convert_pdf("/path/to/document.pdf")
+
+```
+
+- Dashboard showing sync statistics
+
+- Manual sync controls#### Methods
+
+- Connection status for both BigCapital and InvoicePlane
+
+- Error logs and troubleshooting information- `convert_pdf(document_path)`: Convert PDF to Markdown
+
+- `health_check()`: Check API health
+
+## API Reference- `test_connection()`: Test connection to API
+
+
+
+### BigCapitalPlugin### Data Models
+
+
+
+```python#### PDF2MDDocument
+
+from plugins.bigcapitalpy.plugin import BigCapitalPlugin```python
+
+@dataclass
+
+plugin = BigCapitalPlugin("bigcapital")class PDF2MDDocument:
+
+```    filename: str
+
+    original_path: str
+
+#### Methods    markdown_content: Optional[str] = None
+
+    # ... other fields
+
+- `sync_invoice_from_invoiceplane(invoice_id)`: Sync a specific invoice from InvoicePlane```
+
+- `sync_recent_invoices_from_invoiceplane(days=7)`: Sync invoices from the last N days
+
+- `sync_all_pending_invoices_from_invoiceplane()`: Sync all pending invoices#### PDF2MDMetadata
+
+- `health_check()`: Check plugin health and API connectivity```python
+
+- `test_connection()`: Test connection to BigCapital API@dataclass
+
+class PDF2MDMetadata:
+
+### BigCapitalClient    document_id: str
+
+    processing_stats: Dict[str, Any] = field(default_factory=dict)
+
+```python    # ... other fields
+
+from plugins.bigcapitalpy.client import BigCapitalClient```
+
+
+
+client = BigCapitalClient(api_key="your_key", base_url="https://api.bigcapital.ly")## Testing
+
+
+
+# Create a contactRun the test suite:
+
+contact = client.create_contact({
+
+    'name': 'John Doe',```bash
+
+    'email': 'john@example.com',cd plugins/bigcapitalpy
+
+    'phone': '+1234567890'python -m pytest tests/
+
+})```
+
+
+
+# Create an invoiceOr run specific tests:
+
+invoice = client.create_invoice({
+
+    'contact_id': contact['id'],```bash
+
+    'invoice_number': 'INV-001',python -m unittest tests.test_plugin
+
+    'due_date': '2024-12-31',```
+
+    'entries': [...]
+
+})## Dependencies
+
+```
+
+- requests
+
+#### Methods- loguru
+
+- dataclasses (Python 3.7+)
+
+- `create_contact(contact_data)`: Create a new contact
+
+- `get_contact(contact_id)`: Get contact by ID## Compatibility
+
+- `list_contacts()`: List all contacts
+
+- `create_invoice(invoice_data)`: Create a new invoice- Python 3.7+
+
+- `get_invoice(invoice_id)`: Get invoice by ID- Business-Plugin-Middleware
+
+- `list_invoices()`: List all invoices- OpenGovSG pdf2md library (via external service)
+
+- `health_check()`: Check API health
+
+## Contributing
+
+### Data Models
+
+1. Fork the repository
+
+#### BigCapitalContact2. Create a feature branch
+
+```python3. Add tests for new functionality
+
+@dataclass4. Ensure all tests pass
+
+class BigCapitalContact:5. Submit a pull request
+
+    name: str
+
+    email: Optional[str] = None## License
+
+    phone: Optional[str] = None
+
+    address: Optional[str] = NoneThis plugin is part of the Business-Plugin-Middleware project. See the main project license for details.
+
+    contact_type: str = "customer"
+
+```## Support
+
+
+
+#### BigCapitalInvoiceFor issues and questions:
+
+```python
+
+@dataclass1. Check the middleware logs
+
+class BigCapitalInvoice:2. Verify plugin configuration
+
+    contact_id: int3. Test API connectivity
+
+    invoice_number: str4. Review error messages
+
+    invoice_date: str
+
+    due_date: str## Changelog
+
+    status: str = "draft"
+
+    entries: List[BigCapitalInvoiceEntry] = field(default_factory=list)### v1.0.0 (Current)
+
+```- Initial release
+
+- PDF to Markdown conversion
+
+#### BigCapitalInvoiceEntry- Middleware integration
+
+```python- Basic testing framework
+
+@dataclass- Configuration management
+
+class BigCapitalInvoiceEntry:- ✅ **Robust Data Models**: Type-safe dataclasses for all BigCapital entities (Contact, Invoice, Expense, Account)
+
+    item_id: int- ✅ **Smart Data Mappers**: Intelligent document parsing and data transformation utilities
+
+    quantity: float- ✅ **Extensive Validation**: Input validation and data sanitization helpers
+
+    price: float- ✅ **Real-time Statistics**: Dashboard with organization metrics and recent transactions
+
+    description: str
+
+    discount: float = 0.0### 🌐 **Web Interface**
+
+```- ✅ **Modern Dashboard**: Beautiful web interface with real-time connection status
+
+- ✅ **Live Sync Operations**: Manual and automatic document synchronization controls
+
+## Integration Workflow- ✅ **Responsive Design**: Mobile-friendly interface with intuitive controls
+
+- ✅ **Integration Status**: Visual indicators for plugin health and connectivity
+
+### Invoice Sync Process- ✅ **Pending Documents**: Queue management for documents awaiting sync
+
+
+
+1. **Fetch from InvoicePlane**: Retrieve invoice data from InvoicePlane API### 🔐 **Enterprise Features**
+
+2. **Transform Data**: Convert InvoicePlane format to BigCapital format- ✅ **Secure Authentication**: API key management with secure storage
+
+3. **Find/Create Contact**: Match existing contact or create new one in BigCapital- ✅ **Retry Logic**: Automatic retry for failed operations with backoff strategies
+
+4. **Create Invoice**: Create invoice with line items in BigCapital- ✅ **Caching System**: Intelligent caching for contacts and accounts
+
+5. **Update Status**: Map InvoicePlane status to BigCapital status- ✅ **Flexible Configuration**: Multiple configuration methods (web UI, config files, JSON)
+
+6. **Log Results**: Record sync success/failure and any errors- ✅ **Comprehensive Logging**: Detailed logging with Loguru integration
+
+- ✅ **Extensive Testing**: Complete test suite covering all components
+
+### Data Mapping- **🔧 Real-time Debugging**: Built-in diagnostics and error handling
+
+
+
+The plugin handles the following data transformations:## 🔨 **Current Development Status**
+
+
+
+- **Contacts**: InvoicePlane clients → BigCapital contacts### ✅ **Completed Components**
+
+- **Invoices**: InvoicePlane invoices → BigCapital invoices- **Core Models**: Complete data models for BigCapital entities (contacts, invoices, expenses)
+
+- **Line Items**: InvoicePlane items → BigCapital invoice entries- **API Client**: Comprehensive BigCapital API client with retry logic and error handling
+
+- **Statuses**: InvoicePlane statuses → BigCapital invoice statuses- **Document Mappers**: OCR content parsing and financial data extraction
+
+- **Plugin Architecture**: Full plugin implementation with sync capabilities
+
+## Testing- **Web Interface**: Dashboard template with real-time sync controls
+
+- **Test Suite**: Comprehensive unit tests for all components
+
+Run the test suite:- **Validation**: Data validation and sanitization helpers
+
+
+
+```bash### 🚧 **In Development**
+
+cd plugins/bigcapitalpy- **Configuration Management**: Enhanced configuration validation and management
+
+python -m pytest tests/- **Error Recovery**: Advanced error handling and retry mechanisms
+
+```- **Performance Optimization**: Caching and bulk operations
+
+- **User Documentation**: Setup guides and troubleshooting documentation
+
+Or run specific tests:
+
+### 📋 **Not Yet Implemented**
+
+```bash- **Production Testing**: Real-world testing with live BigCapital instances
+
+python -m unittest tests.test_bigcapital_plugin- **Data Migration**: Tools for migrating existing financial data
+
+```- **Advanced Workflows**: Complex sync rules and automation
+
+- **User Permissions**: Role-based access control
+
+## Dependencies- **Audit Logging**: Detailed sync operation logging
+
+
+
+- requests## 🏗️ **Architecture Overview**
+
+- loguru
+
+- dataclasses (Python 3.7+)### **Core Components**
+
+- InvoicePlane plugin (for data source)
+
+```
+
+## Compatibilityplugins/bigcapital/
+
+├── models.py          # Data models for BigCapital entities
+
+- Python 3.7+├── client.py          # BigCapital API client with full coverage
+
+- Business-Plugin-Middleware├── mappers.py         # Document-to-financial-data mapping
+
+- BigCapital API├── plugin.py          # Main plugin implementation
+
+- InvoicePlane API└── README.md          # This documentation
+
+```
+
+## Contributing
+
+### **Data Models**
+
+1. Fork the repository- `BigCapitalContact`: Customer/vendor management
+
+2. Create a feature branch- `BigCapitalInvoice`: Invoice creation and management
+
+3. Add tests for new functionality- `BigCapitalInvoiceEntry`: Line item management
+
+4. Ensure all tests pass- `BigCapitalExpense`: Expense tracking and categorization
+
+5. Submit a pull request- `BigCapitalAccount`: Chart of accounts integration
+
+- `BigCapitalOrganization`: Organization settings and info
+
+## License
+
+### **API Client Features**
+
+This plugin is part of the Business-Plugin-Middleware project. See the main project license for details.- **Full API Coverage**: Contacts, invoices, expenses, accounts, reports
+
+- **Error Handling**: Comprehensive error detection and reporting
+
+## Support- **Retry Logic**: Automatic retry for transient failures
+
+- **Rate Limiting**: Intelligent request throttling
+
+For issues and questions:- **Authentication**: Secure API key management
+
+- **Bulk Operations**: Efficient batch processing
+
+1. Check the middleware logs
+
+2. Verify plugin configuration for both BigCapital and InvoicePlane### **Document Processing Pipeline**
+
+3. Test API connectivity to both systems1. **OCR Analysis**: Extract text and financial data from documents
+
+4. Review error messages in the web interface2. **Data Mapping**: Convert document data to BigCapital format
+
+3. **Validation**: Ensure data integrity and completeness
+
+## Changelog4. **Sync**: Create or update BigCapital entities
+
+5. **Verification**: Confirm successful sync and handle errors
+
+### v1.0.0 (Current)
+
+- Initial release## ⚙️ **Configuration**
+
+- Invoice synchronization from InvoicePlane to BigCapital
+
+- Contact management and matching### **Basic Configuration**
+
+- Data transformation and mapping
+
+- Web interface for monitoring and manual syncAdd to your `config/config.ini`:
+
+- Comprehensive testing framework
+
+- Configuration management```ini
+[bigcapital]
+enabled = true
+api_key = YOUR_BIGCAPITAL_API_KEY
+base_url = https://api.bigcapital.ly
+timeout = 30
+auto_sync = false
+default_due_days = 30
+```
+
+### **Plugin Configuration**
+
+The plugin also supports configuration via `config/plugins.json`:
+
+```json
+{
+  "bigcapital": {
+    "enabled": true,
+    "api_key": "YOUR_BIGCAPITAL_API_KEY",
+    "base_url": "https://api.bigcapital.ly",
+    "timeout": 30,
+    "auto_sync": false,
+    "default_due_days": 30,
+    "cache_timeout": 3600,
+    "retry_attempts": 3,
+    "sync_batch_size": 10
+  }
+}
+```
+
+### **Getting Your API Key**
+
+1. Log into your BigCapital account
+2. Go to **Settings** → **API & Integrations**
+3. Click **Generate API Key**
+4. Copy the generated key and use it in your configuration
+5. **Keep this key secure** - it provides full access to your BigCapital data
+
+## 🚀 **Usage** (When Implemented)
+
+### **Web Interface**
+
+Once configured, the plugin will provide:
+
+1. **Dashboard**: Access via `/bigcapital` route
+2. **Sync Controls**: Manual and automatic sync options
+3. **Status Monitoring**: Real-time connection and sync status
+4. **Document Processing**: Convert documents to expenses/invoices
+5. **Error Management**: Detailed error reporting and resolution
+
+### **Document Sync Workflow**
+
+1. **Document Detection**: Paperless-NGX documents are automatically detected
+2. **OCR Processing**: Text and financial data extracted
+3. **Smart Classification**: Documents classified as expenses or invoices
+4. **Vendor/Customer Matching**: Automatic contact creation or matching
+5. **BigCapital Sync**: Financial records created in BigCapital
+6. **Verification**: Sync status and error handling
+
+### **API Endpoints** (Planned)
+
+- `GET /api/bigcapital/status` - Connection and sync status
+- `POST /api/bigcapital/sync` - Trigger manual sync
+- `POST /api/bigcapital/sync-document` - Sync specific document
+- `GET /api/bigcapital/contacts` - List contacts
+- `GET /api/bigcapital/invoices` - List invoices
+- `GET /api/bigcapital/expenses` - List expenses
+
+## 🧪 **Testing**
+
+### **Running Tests**
+
+```bash
+# Run all BigCapital tests
+python -m pytest tests/test_bigcapital.py -v
+
+# Run specific test categories
+python -m pytest tests/test_bigcapital.py::TestBigCapitalModels -v
+python -m pytest tests/test_bigcapital.py::TestBigCapitalClient -v
+python -m pytest tests/test_bigcapital.py::TestDocumentParser -v
+```
+
+### **Test Coverage**
+
+- **Models**: Data structure validation and conversion
+- **API Client**: All API endpoints and error conditions
+- **Document Parsing**: OCR content extraction and mapping
+- **Plugin Integration**: End-to-end sync workflows
+- **Error Handling**: Failure modes and recovery
+
+## 🔧 **Development**
+
+### **Adding New Features**
+
+1. **Models**: Add new data structures in `models.py`
+2. **API Methods**: Extend client functionality in `client.py`
+3. **Mapping Logic**: Add document processing in `mappers.py`
+4. **Plugin Methods**: Implement sync logic in `plugin.py`
+5. **Tests**: Add comprehensive tests for new functionality
+
+### **Code Style**
+
+- Follow PEP 8 Python style guidelines
+- Use type hints for all function parameters and returns
+- Add comprehensive docstrings for all public methods
+- Include error handling for all external API calls
+- Write tests for all new functionality
+
+### **Architecture Principles**
+
+- **Separation of Concerns**: Clear separation between API, mapping, and sync logic
+- **Error Resilience**: Graceful handling of all failure modes
+- **Data Integrity**: Validation at every step of the pipeline
+- **Performance**: Efficient caching and bulk operations
+- **Security**: Secure handling of API keys and financial data
+
+## 🚨 **Security Considerations**
+
+### **API Key Management**
+- Store API keys securely (never in code)
+- Use environment variables for production deployments
+- Rotate API keys regularly
+- Monitor API key usage for suspicious activity
+
+### **Data Handling**
+- All financial data is handled in memory only
+- No persistent storage of sensitive financial information
+- Secure transmission using HTTPS only
+- Input validation on all external data
+
+### **Access Control**
+- Plugin respects user permissions
+- No elevation of privileges
+- Audit logging for all sync operations
+- Secure error messages (no sensitive data exposure)
+
+## 🗺️ **Roadmap**
+
+### **Phase 1: Core Functionality (Q3 2025)**
+- [x] **Data Models**: Complete BigCapital entity models
+- [x] **API Client**: Full BigCapital API integration
+- [x] **Document Parsing**: OCR content extraction and mapping
+- [x] **Plugin Architecture**: Core sync functionality
+- [x] **Web Interface**: Basic dashboard and controls
+- [x] **Test Suite**: Comprehensive test coverage
+- [ ] **Configuration Management**: Enhanced setup and validation
+- [ ] **Error Recovery**: Advanced error handling
+- [ ] **Documentation**: Complete setup and usage guides
+
+### **Phase 2: Production Readiness (Q4 2025)**
+- [ ] **Live Testing**: Real-world BigCapital integration testing
+- [ ] **Performance Optimization**: Caching and bulk operations
+- [ ] **Error Monitoring**: Advanced logging and alerting
+- [ ] **User Documentation**: Complete user guides and tutorials
+- [ ] **Migration Tools**: Data import/export capabilities
+- [ ] **Backup Integration**: Safe data handling and recovery
+
+### **Phase 3: Advanced Features (Q1 2026)**
+- [ ] **Two-way Sync**: Bidirectional data synchronization
+- [ ] **Advanced Workflows**: Custom sync rules and automation
+- [ ] **Reporting Integration**: Financial reports and analytics
+- [ ] **Multi-Currency Support**: International currency handling
+- [ ] **Tax Integration**: Automated tax calculation and reporting
+- [ ] **API Rate Optimization**: Intelligent request batching
+
+### **Phase 4: Enterprise Features (Q2 2026)**
+- [ ] **User Permissions**: Role-based access control
+- [ ] **Audit Logging**: Comprehensive operation tracking
+- [ ] **Enterprise SSO**: Single sign-on integration
+- [ ] **Multi-Instance Support**: Multiple BigCapital accounts
+- [ ] **Advanced Security**: Enhanced encryption and compliance
+- [ ] **Custom Integrations**: Plugin extension framework
+
+### **🔮 Future Considerations**
+- **AI-Powered Classification**: Machine learning for document categorization
+- **Blockchain Integration**: Immutable financial record keeping
+- **Mobile Optimization**: Mobile-first interface design
+- **Cloud Integration**: Direct cloud storage connections
+- **Third-party Integrations**: Banking and payment processor connections
+
+### **📅 Development Timeline**
+- **Phase 1**: Q3-Q4 2025 (Core Functionality)
+- **Alpha Release**: Q1 2026 (Basic Production Readiness)
+- **Beta Release**: Q2 2026 (Advanced Features)
+- **Production Release**: Q3 2026 (Enterprise Ready)
+
+**Note**: All timelines are estimates and subject to change based on development progress, testing results, and community feedback.
+
+## 🤝 **Contributing**
+
+### **How to Contribute**
+- **Bug Reports**: Submit detailed bug reports with reproduction steps
+- **Feature Requests**: Propose new features with use cases
+- **Code Contributions**: Submit pull requests with tests and documentation
+- **Testing**: Help test the plugin with real BigCapital instances
+- **Documentation**: Improve setup guides and troubleshooting docs
+
+### **Development Setup**
+1. Fork the repository
+2. Set up a development environment
+3. Create a test BigCapital account
+4. Run the test suite to ensure everything works
+5. Make your changes with proper tests
+6. Submit a pull request with detailed description
+
+### **Code Standards**
+- All contributions must include comprehensive tests
+- Follow the existing code style and architecture
+- Include proper error handling and logging
+- Update documentation for any user-facing changes
+- Ensure backwards compatibility when possible
+
+*Note: This plugin is experimental and under active development. Breaking changes are expected during the pre-alpha phase.*
+
+## API Documentation
+
+For detailed InvoicePlane API documentation, see `INVOICEPLANEPY_API_SPECIFICATION.md` in the InvoicePlane plugin directory. This document provides comprehensive information about:
+
+- Authentication methods
+- Available endpoints
+- Data structures and response formats
+- Integration examples
+- Status codes and error handling
