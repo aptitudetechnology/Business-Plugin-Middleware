@@ -61,8 +61,8 @@ class InvoicePlaneClient:
         return self._make_request('POST', 'invoices', invoice_data)
     
     def get_invoice(self, invoice_id: str) -> Optional[Dict[str, Any]]:
-        """Get invoice by ID"""
-        return self._make_request('GET', f'invoices/{invoice_id}')
+        """Get invoice by ID with full details"""
+        return self._make_request('GET', f'invoices/{invoice_id}/api')
     
     def get_recent_invoices(self, limit: int = 10) -> Optional[List[Dict[str, Any]]]:
         """Get recent invoices using the new API format"""

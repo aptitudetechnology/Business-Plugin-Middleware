@@ -10,8 +10,8 @@
     },
     "bigcapitalpy": {
       "enabled": true,
-      "api_key": "your-bigcapital-api-key-here",
-      "base_url": "https://api.bigcapital.ly",
+      "api_key": "99f381a7e87e35848f39ba8eb2ff90671c03085a031408453ed279e4bbc48152",
+      "base_url": "http://bigcapital:3000",
       "timeout": 30,
       "auto_sync": false,
       "default_due_days": 30,
