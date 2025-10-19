@@ -161,7 +161,7 @@ class PDF2MDProcessor {
 ### Plugin Directory Structure
 ```
 plugins/
-  pdf2md_plugin/
+  bigcapitalpy/
     __init__.py
     plugin.py                 # Main plugin class
     config.json              # Plugin configuration

@@ -3,7 +3,6 @@ Comprehensive tests for BigCapital Plugin
 
 Test coverage for models, mappers, client, and plugin functionality.
 """
-import pytest
 import unittest
 from unittest.mock import Mock, patch, MagicMock
 from decimal import Decimal
@@ -477,6 +476,299 @@ class TestBigCapitalPlugin(unittest.TestCase):
             'email': 'invalid-email'
         }
         self.assertFalse(self.plugin._validate_contact_data(invalid_data))
+    
+    @patch('plugins.bigcapital.plugin.BigCapitalPlugin._transform_invoiceplane_to_bigcapital')
+    @patch('plugins.bigcapital.plugin.BigCapitalPlugin._find_or_create_contact_from_invoiceplane')
+    @patch.object(BigCapitalClient, 'create_invoice')
+    def test_sync_invoice_from_invoiceplane_success(self, mock_create_invoice, mock_find_contact, mock_transform):
+        """Test successful invoice sync from InvoicePlane"""
+        # Mock the InvoicePlane invoice data
+        invoiceplane_data = {
+            'id': 123,
+            'client_id': 456,
+            'invoice_number': 'INV-001',
+            'invoice_date': '2024-01-15',
+            'due_date': '2024-02-15',
+            'status': 'sent',
+            'items': [
+                {
+                    'name': 'Service',
+                    'quantity': 1,
+                    'price': 100.00,
+                    'discount': 0
+                }
+            ]
+        }
+        
+        # Mock the transformed BigCapital data
+        bigcapital_data = {
+            'contact_id': 789,
+            'invoice_number': 'INV-001',
+            'invoice_date': '2024-01-15',
+            'due_date': '2024-02-15',
+            'status': 'sent',
+            'entries': [
+                {
+                    'item_id': 1,
+                    'quantity': 1,
+                    'price': 100.00,
+                    'description': 'Service',
+                    'discount': 0
+                }
+            ]
+        }
+        
+        # Mock the created invoice response
+        created_invoice = {'id': 999, 'invoice_number': 'INV-001'}
+        
+        # Setup mocks
+        mock_transform.return_value = bigcapital_data
+        mock_find_contact.return_value = {'id': 789, 'name': 'Test Client'}
+        mock_create_invoice.return_value = created_invoice
+        
+        # Initialize client
+        self.plugin.client = BigCapitalClient('test_key', 'https://api.test.com')
+        
+        # Call the method
+        result = self.plugin.sync_invoice_from_invoiceplane(invoiceplane_data)
+        
+        # Assertions
+        self.assertTrue(result['success'])
+        self.assertEqual(result['bigcapital_invoice_id'], 999)
+        self.assertEqual(result['invoice_number'], 'INV-001')
+        
+        # Verify mocks were called
+        mock_transform.assert_called_once_with(invoiceplane_data)
+        mock_find_contact.assert_called_once_with(invoiceplane_data)
+        mock_create_invoice.assert_called_once_with(bigcapital_data)
+    
+    @patch('plugins.bigcapital.plugin.BigCapitalPlugin._transform_invoiceplane_to_bigcapital')
+    def test_sync_invoice_from_invoiceplane_transform_failure(self, mock_transform):
+        """Test invoice sync failure during transformation"""
+        invoiceplane_data = {'id': 123}
+        
+        # Mock transformation failure
+        mock_transform.side_effect = ValueError("Invalid data")
+        
+        # Initialize client
+        self.plugin.client = BigCapitalClient('test_key', 'https://api.test.com')
+        
+        result = self.plugin.sync_invoice_from_invoiceplane(invoiceplane_data)
+        
+        self.assertFalse(result['success'])
+        self.assertIn('Invalid data', result['error'])
+    
+    @patch('plugins.bigcapital.plugin.BigCapitalPlugin._find_or_create_contact_from_invoiceplane')
+    @patch('plugins.bigcapital.plugin.BigCapitalPlugin._transform_invoiceplane_to_bigcapital')
+    def test_sync_invoice_from_invoiceplane_contact_failure(self, mock_transform, mock_find_contact):
+        """Test invoice sync failure during contact creation/finding"""
+        invoiceplane_data = {'id': 123}
+        bigcapital_data = {'contact_id': 789}
+        
+        mock_transform.return_value = bigcapital_data
+        mock_find_contact.side_effect = Exception("Contact creation failed")
+        
+        # Initialize client
+        self.plugin.client = BigCapitalClient('test_key', 'https://api.test.com')
+        
+        result = self.plugin.sync_invoice_from_invoiceplane(invoiceplane_data)
+        
+        self.assertFalse(result['success'])
+        self.assertIn('Contact creation failed', result['error'])
+    
+    @patch('plugins.bigcapital.plugin.BigCapitalPlugin._transform_invoiceplane_to_bigcapital')
+    @patch('plugins.bigcapital.plugin.BigCapitalPlugin._find_or_create_contact_from_invoiceplane')
+    @patch.object(BigCapitalClient, 'create_invoice')
+    def test_sync_invoice_from_invoiceplane_api_failure(self, mock_create_invoice, mock_find_contact, mock_transform):
+        """Test invoice sync failure during BigCapital API call"""
+        invoiceplane_data = {'id': 123}
+        bigcapital_data = {'contact_id': 789}
+        
+        mock_transform.return_value = bigcapital_data
+        mock_find_contact.return_value = {'id': 789}
+        mock_create_invoice.side_effect = BigCapitalAPIError("API Error")
+        
+        # Initialize client
+        self.plugin.client = BigCapitalClient('test_key', 'https://api.test.com')
+        
+        result = self.plugin.sync_invoice_from_invoiceplane(invoiceplane_data)
+        
+        self.assertFalse(result['success'])
+        self.assertIn('API Error', result['error'])
+    
+    def test_transform_invoiceplane_to_bigcapital(self):
+        """Test transformation of InvoicePlane data to BigCapital format"""
+        invoiceplane_data = {
+            'id': 123,
+            'client_id': 456,
+            'invoice_number': 'INV-001',
+            'invoice_date': '2024-01-15',
+            'due_date': '2024-02-15',
+            'status': 'sent',
+            'items': [
+                {
+                    'name': 'Service 1',
+                    'description': 'Description 1',
+                    'quantity': 2,
+                    'price': 50.00,
+                    'discount': 5.00
+                },
+                {
+                    'name': 'Service 2',
+                    'quantity': 1,
+                    'price': 100.00,
+                    'discount': 0
+                }
+            ]
+        }
+        
+        result = self.plugin._transform_invoiceplane_to_bigcapital(invoiceplane_data)
+        
+        # Check basic fields
+        self.assertEqual(result['invoice_number'], 'INV-001')
+        self.assertEqual(result['invoice_date'], '2024-01-15')
+        self.assertEqual(result['due_date'], '2024-02-15')
+        self.assertEqual(result['status'], 'sent')
+        
+        # Check entries
+        self.assertEqual(len(result['entries']), 2)
+        self.assertEqual(result['entries'][0]['description'], 'Service 1 - Description 1')
+        self.assertEqual(result['entries'][0]['quantity'], 2)
+        self.assertEqual(result['entries'][0]['price'], 50.00)
+        self.assertEqual(result['entries'][0]['discount'], 5.00)
+        
+        self.assertEqual(result['entries'][1]['description'], 'Service 2')
+        self.assertEqual(result['entries'][1]['quantity'], 1)
+        self.assertEqual(result['entries'][1]['price'], 100.00)
+        self.assertEqual(result['entries'][1]['discount'], 0)
+    
+    @patch.object(BigCapitalClient, 'create_contact')
+    @patch('plugins.bigcapital.plugin.BigCapitalPlugin._find_existing_contact_from_invoiceplane')
+    def test_find_or_create_contact_from_invoiceplane_existing(self, mock_find_existing, mock_create_contact):
+        """Test finding existing contact"""
+        invoiceplane_data = {
+            'client_id': 456,
+            'client_name': 'Test Client',
+            'client_email': 'test@example.com'
+        }
+        
+        existing_contact = {'id': 789, 'name': 'Test Client'}
+        mock_find_existing.return_value = existing_contact
+        
+        # Initialize client
+        self.plugin.client = BigCapitalClient('test_key', 'https://api.test.com')
+        
+        result = self.plugin._find_or_create_contact_from_invoiceplane(invoiceplane_data)
+        
+        self.assertEqual(result, existing_contact)
+        mock_create_contact.assert_not_called()
+    
+    @patch.object(BigCapitalClient, 'create_contact')
+    @patch('plugins.bigcapital.plugin.BigCapitalPlugin._find_existing_contact_from_invoiceplane')
+    def test_find_or_create_contact_from_invoiceplane_new(self, mock_find_existing, mock_create_contact):
+        """Test creating new contact when none exists"""
+        invoiceplane_data = {
+            'client_id': 456,
+            'client_name': 'New Client',
+            'client_email': 'new@example.com',
+            'client_phone': '555-1234'
+        }
+        
+        mock_find_existing.return_value = None
+        new_contact = {'id': 999, 'name': 'New Client'}
+        mock_create_contact.return_value = new_contact
+        
+        # Initialize client
+        self.plugin.client = BigCapitalClient('test_key', 'https://api.test.com')
+        
+        result = self.plugin._find_or_create_contact_from_invoiceplane(invoiceplane_data)
+        
+        self.assertEqual(result, new_contact)
+        mock_create_contact.assert_called_once()
+        call_args = mock_create_contact.call_args[0][0]
+        self.assertEqual(call_args['name'], 'New Client')
+        self.assertEqual(call_args['email'], 'new@example.com')
+        self.assertEqual(call_args['phone'], '555-1234')
+    
+    @patch.object(BigCapitalClient, 'list_contacts')
+    def test_find_existing_contact_from_invoiceplane_by_email(self, mock_list_contacts):
+        """Test finding existing contact by email"""
+        mock_list_contacts.return_value = [
+            {'id': 1, 'name': 'Client 1', 'email': 'other@example.com'},
+            {'id': 2, 'name': 'Test Client', 'email': 'test@example.com'},
+            {'id': 3, 'name': 'Client 3', 'email': 'another@example.com'}
+        ]
+        
+        invoiceplane_data = {
+            'client_email': 'test@example.com'
+        }
+        
+        # Initialize client
+        self.plugin.client = BigCapitalClient('test_key', 'https://api.test.com')
+        
+        result = self.plugin._find_existing_contact_from_invoiceplane(invoiceplane_data)
+        
+        self.assertEqual(result['id'], 2)
+        self.assertEqual(result['name'], 'Test Client')
+    
+    @patch.object(BigCapitalClient, 'list_contacts')
+    def test_find_existing_contact_from_invoiceplane_by_name(self, mock_list_contacts):
+        """Test finding existing contact by name when email doesn't match"""
+        mock_list_contacts.return_value = [
+            {'id': 1, 'name': 'Client 1', 'email': 'client1@example.com'},
+            {'id': 2, 'name': 'Test Client', 'email': 'different@example.com'}
+        ]
+        
+        invoiceplane_data = {
+            'client_name': 'Test Client',
+            'client_email': 'test@example.com'
+        }
+        
+        # Initialize client
+        self.plugin.client = BigCapitalClient('test_key', 'https://api.test.com')
+        
+        result = self.plugin._find_existing_contact_from_invoiceplane(invoiceplane_data)
+        
+        self.assertEqual(result['id'], 2)
+        self.assertEqual(result['name'], 'Test Client')
+    
+    @patch.object(BigCapitalClient, 'list_contacts')
+    def test_find_existing_contact_from_invoiceplane_not_found(self, mock_list_contacts):
+        """Test when no existing contact is found"""
+        mock_list_contacts.return_value = [
+            {'id': 1, 'name': 'Client 1', 'email': 'client1@example.com'}
+        ]
+        
+        invoiceplane_data = {
+            'client_name': 'Test Client',
+            'client_email': 'test@example.com'
+        }
+        
+        # Initialize client
+        self.plugin.client = BigCapitalClient('test_key', 'https://api.test.com')
+        
+        result = self.plugin._find_existing_contact_from_invoiceplane(invoiceplane_data)
+        
+        self.assertIsNone(result)
+    
+    def test_map_invoice_status(self):
+        """Test invoice status mapping from InvoicePlane to BigCapital"""
+        # Test various InvoicePlane statuses
+        test_cases = [
+            ('draft', 'draft'),
+            ('sent', 'sent'),
+            ('viewed', 'sent'),
+            ('paid', 'paid'),
+            ('partial', 'partial'),
+            ('overdue', 'overdue'),
+            ('cancelled', 'draft'),  # Map cancelled to draft
+            ('unknown', 'draft')  # Default to draft for unknown
+        ]
+        
+        for invoiceplane_status, expected_bigcapital_status in test_cases:
+            with self.subTest(status=invoiceplane_status):
+                result = self.plugin._map_invoice_status(invoiceplane_status)
+                self.assertEqual(result, expected_bigcapital_status)
 
 
 if __name__ == '__main__':
