@@ -150,6 +150,21 @@ class InvoicePlaneClient:
             return result['statuses']
         return []
     
+    def get_invoice_html(self, invoice_id: int) -> Optional[str]:
+        """Get HTML representation of an invoice"""
+        try:
+            url = f"{self.base_url}/invoices/{invoice_id}"
+            headers = {'Authorization': f'Bearer {self.api_key}'}
+            
+            response = self.session.get(url, headers=headers)
+            response.raise_for_status()
+            
+            return response.text
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to get invoice HTML for {invoice_id}: {e}")
+            return None
+    
     def get_quote_statuses(self) -> Optional[List[Dict[str, Any]]]:
         """Get available quote statuses"""
         result = self._make_request('GET', 'quotes/statuses')

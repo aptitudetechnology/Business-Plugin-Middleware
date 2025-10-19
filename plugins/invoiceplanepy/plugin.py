@@ -305,6 +305,26 @@ class InvoicePlanePlugin(IntegrationPlugin):
                 </div>
             """)
         
+        @bp.route('/invoice/<int:invoice_id>')
+        def view_invoice(invoice_id):
+            """View individual invoice HTML from InvoicePlane"""
+            try:
+                if not self.client:
+                    return "InvoicePlane client not initialized", 500
+                
+                # Fetch the HTML representation of the invoice
+                invoice_html = self.client.get_invoice_html(invoice_id)
+                
+                if not invoice_html:
+                    return f"Invoice {invoice_id} not found", 404
+                
+                # Return the HTML directly
+                return invoice_html
+                
+            except Exception as e:
+                logger.error(f"Error viewing invoice {invoice_id}: {e}")
+                return f"Error viewing invoice: {str(e)}", 500
+        
         @bp.route('/settings')
         def settings():
             """Plugin settings page"""

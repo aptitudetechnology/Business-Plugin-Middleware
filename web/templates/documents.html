@@ -186,8 +186,10 @@
                                             {% for invoice in recent_invoices %}
                                             <tr>
                                                 <td>
-                                                    <i class="fas fa-file-invoice-dollar"></i>
-                                                    {{ invoice.invoice_number or invoice.number or 'N/A' }}
+                                                    <a href="/plugins/invoiceplane/invoice/{{ invoice.id }}" target="_blank" class="text-decoration-none">
+                                                        <i class="fas fa-file-invoice-dollar"></i>
+                                                        {{ invoice.invoice_number or invoice.number or 'N/A' }}
+                                                    </a>
                                                 </td>
                                                 <td>
                                                     {% if invoice.client %}
@@ -226,9 +228,22 @@
                                                         <button class="btn btn-outline-info" title="Details" onclick="showInvoiceDetails('{{ invoice.id }}')">
                                                             <i class="fas fa-info-circle"></i>
                                                         </button>
-                                                        <button class="btn btn-outline-success" title="Sync to BigCapital" onclick="syncInvoiceToBigCapital('{{ invoice.id }}')">
-                                                            <i class="fas fa-sync"></i>
-                                                        </button>
+                                                        
+                                                        <!-- Send To Dropdown -->
+                                                        <div class="btn-group btn-group-sm" role="group">
+                                                            <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Send To">
+                                                                <i class="fas fa-share"></i>
+                                                            </button>
+                                                            <ul class="dropdown-menu">
+                                                                <li><a class="dropdown-item" href="#" onclick="sendToBigCapital('{{ invoice.id }}')">
+                                                                    <i class="fas fa-building"></i> Send to BigCapitalPy
+                                                                </a></li>
+                                                                <!-- Placeholder for future send-to options -->
+                                                                <li><hr class="dropdown-divider"></li>
+                                                                <li><span class="dropdown-item-text text-muted small">More options coming soon...</span></li>
+                                                            </ul>
+                                                        </div>
+                                                        
                                                         {% if invoice.url_key %}
                                                         <a href="/plugins/invoiceplane/invoice/{{ invoice.id }}" target="_blank" class="btn btn-outline-primary" title="View in InvoicePlane">
                                                             <i class="fas fa-external-link-alt"></i>
@@ -744,8 +759,8 @@ function displayInvoiceDetails(invoiceData) {
                 
                 <h6>Actions</h6>
                 <div class="d-grid gap-2">
-                    <button class="btn btn-outline-success btn-sm" onclick="syncInvoiceToBigCapital('${invoiceData.id}')">
-                        <i class="fas fa-sync"></i> Sync to BigCapital
+                    <button class="btn btn-outline-success btn-sm" onclick="sendToBigCapital('${invoiceData.id}')">
+                        <i class="fas fa-share"></i> Send to BigCapitalPy
                     </button>
                     ${invoiceData.url_key ? `<a href="/plugins/invoiceplane/invoice/${invoiceData.id}" target="_blank" class="btn btn-outline-primary btn-sm"><i class="fas fa-external-link-alt"></i> View in InvoicePlane</a>` : ''}
                 </div>
@@ -784,11 +799,11 @@ function displayInvoiceDetails(invoiceData) {
     `;
 }
 
-function syncInvoiceToBigCapital(invoiceId) {
+function sendToBigCapital(invoiceId) {
     // Show loading state
     const button = event.target.closest('button');
     const originalText = button.innerHTML;
-    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing...';
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
     button.disabled = true;
     
     // Call sync API
