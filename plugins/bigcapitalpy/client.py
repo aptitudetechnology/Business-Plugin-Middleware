@@ -335,7 +335,7 @@ class BigCapitalClient:
             if account_id:
                 params['account_id'] = account_id
                 
-            response = self._make_request('GET', '/api/expenses', params=params)
+            response = self._make_request('GET', 'expenses', params=params)
             return response.get('data', []) if response else []
         except BigCapitalAPIError as e:
             logger.error(f"Failed to get expenses: {e}")
@@ -348,7 +348,7 @@ class BigCapitalClient:
     def get_expense(self, expense_id: int) -> Optional[Dict[str, Any]]:
         """Get a specific expense"""
         try:
-            return self._make_request('GET', f'/api/expenses/{expense_id}')
+            return self._make_request('GET', f'expenses/{expense_id}')
         except BigCapitalAPIError as e:
             logger.error(f"Failed to get expense {expense_id}: {e}")
             return None
@@ -356,7 +356,7 @@ class BigCapitalClient:
     def create_expense(self, expense_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Create a new expense"""
         try:
-            return self._make_request('POST', '/api/expenses', json=expense_data)
+            return self._make_request('POST', 'expenses', json=expense_data)
         except BigCapitalAPIError as e:
             logger.error(f"Failed to create expense: {e}")
             return None
@@ -364,7 +364,7 @@ class BigCapitalClient:
     def update_expense(self, expense_id: int, expense_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Update an existing expense"""
         try:
-            return self._make_request('PUT', f'/api/expenses/{expense_id}', json=expense_data)
+            return self._make_request('PUT', f'expenses/{expense_id}', json=expense_data)
         except BigCapitalAPIError as e:
             logger.error(f"Failed to update expense {expense_id}: {e}")
             return None
@@ -372,7 +372,7 @@ class BigCapitalClient:
     def delete_expense(self, expense_id: int) -> bool:
         """Delete an expense"""
         try:
-            self._make_request('DELETE', f'/api/expenses/{expense_id}')
+            self._make_request('DELETE', f'expenses/{expense_id}')
             return True
         except BigCapitalAPIError as e:
             logger.error(f"Failed to delete expense {expense_id}: {e}")
@@ -386,7 +386,7 @@ class BigCapitalClient:
             if item_type:
                 params['type'] = item_type
                 
-            response = self._make_request('GET', '/api/items', params=params)
+            response = self._make_request('GET', 'items', params=params)
             return response.get('data', []) if response else []
         except BigCapitalAPIError as e:
             logger.error(f"Failed to get items: {e}")
@@ -395,7 +395,7 @@ class BigCapitalClient:
     def create_item(self, item_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Create a new item/service"""
         try:
-            return self._make_request('POST', '/api/items', json=item_data)
+            return self._make_request('POST', 'items', json=item_data)
         except BigCapitalAPIError as e:
             logger.error(f"Failed to create item: {e}")
             return None
@@ -405,7 +405,7 @@ class BigCapitalClient:
         """Get Profit & Loss report"""
         try:
             params = {'start_date': start_date, 'end_date': end_date}
-            return self._make_request('GET', '/api/reports/profit-loss', params=params)
+            return self._make_request('GET', 'reports/profit-loss', params=params)
         except BigCapitalAPIError as e:
             logger.error(f"Failed to get P&L report: {e}")
             return None
@@ -414,7 +414,7 @@ class BigCapitalClient:
         """Get Balance Sheet report"""
         try:
             params = {'as_date': as_date}
-            return self._make_request('GET', '/api/reports/balance-sheet', params=params)
+            return self._make_request('GET', 'reports/balance-sheet', params=params)
         except BigCapitalAPIError as e:
             logger.error(f"Failed to get balance sheet: {e}")
             return None
@@ -423,7 +423,7 @@ class BigCapitalClient:
         """Get Cash Flow report"""
         try:
             params = {'start_date': start_date, 'end_date': end_date}
-            return self._make_request('GET', '/api/reports/cash-flow', params=params)
+            return self._make_request('GET', 'reports/cash-flow', params=params)
         except BigCapitalAPIError as e:
             logger.error(f"Failed to get cash flow report: {e}")
             return None
@@ -432,7 +432,7 @@ class BigCapitalClient:
     def get_dashboard_stats(self) -> Optional[Dict[str, Any]]:
         """Get dashboard statistics"""
         try:
-            return self._make_request('GET', '/api/dashboard/stats')
+            return self._make_request('GET', 'dashboard/stats')
         except BigCapitalAPIError as e:
             logger.error(f"Failed to get dashboard stats: {e}")
             return None
@@ -440,7 +440,7 @@ class BigCapitalClient:
     def get_currencies(self) -> Optional[List[Dict[str, Any]]]:
         """Get supported currencies"""
         try:
-            response = self._make_request('GET', '/api/currencies')
+            response = self._make_request('GET', 'currencies')
             return response.get('data', []) if response else []
         except BigCapitalAPIError as e:
             logger.error(f"Failed to get currencies: {e}")
@@ -449,7 +449,7 @@ class BigCapitalClient:
     def get_tax_rates(self) -> Optional[List[Dict[str, Any]]]:
         """Get tax rates"""
         try:
-            response = self._make_request('GET', '/api/tax-rates')
+            response = self._make_request('GET', 'tax-rates')
             return response.get('data', []) if response else []
         except BigCapitalAPIError as e:
             logger.error(f"Failed to get tax rates: {e}")
@@ -459,7 +459,7 @@ class BigCapitalClient:
     def bulk_create_contacts(self, contacts_data: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         """Create multiple contacts in bulk"""
         try:
-            return self._make_request('POST', '/api/contacts/bulk', json={'contacts': contacts_data})
+            return self._make_request('POST', 'contacts/bulk', json={'contacts': contacts_data})
         except BigCapitalAPIError as e:
             logger.error(f"Failed to bulk create contacts: {e}")
             return None
@@ -467,7 +467,7 @@ class BigCapitalClient:
     def bulk_create_invoices(self, invoices_data: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         """Create multiple invoices in bulk"""
         try:
-            return self._make_request('POST', '/api/invoices/bulk', json={'invoices': invoices_data})
+            return self._make_request('POST', 'invoices/bulk', json={'invoices': invoices_data})
         except BigCapitalAPIError as e:
             logger.error(f"Failed to bulk create invoices: {e}")
             return None
