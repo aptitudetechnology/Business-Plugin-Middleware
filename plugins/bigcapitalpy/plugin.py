@@ -764,6 +764,69 @@ class BigCapitalPlugin(IntegrationPlugin):
                 'invoice_number': invoice_data.get('invoice_number')
             }
 
+    def sync_contact_from_invoiceplane(self, contact_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Sync contact data from InvoicePlane to BigCapital"""
+        try:
+            if not self.client:
+                raise IntegrationError("BigCapital client not initialized")
+
+            contact_id = contact_data.get('id', 'unknown')
+            contact_name = contact_data.get('name', 'unknown')
+            logger.info(f"Syncing contact from InvoicePlane: {contact_name} (ID: {contact_id})")
+
+            # Check if contact already exists in BigCapital
+            existing_contact = self._find_existing_contact_from_invoiceplane(contact_data)
+
+            if existing_contact:
+                logger.info(f"Contact already exists in BigCapital: {existing_contact['id']}")
+                return {
+                    'success': True,
+                    'contact_id': existing_contact['id'],
+                    'action': 'already_exists',
+                    'invoiceplane_id': contact_id,
+                    'contact_name': contact_name
+                }
+
+            # Create new contact in BigCapital
+            result = self._sync_contact(contact_data)
+
+            if result.get('success'):
+                logger.info(f"Successfully synced contact to BigCapital: {result.get('contact_id')}")
+                return {
+                    'success': True,
+                    'contact_id': result.get('contact_id'),
+                    'action': 'created',
+                    'invoiceplane_id': contact_id,
+                    'contact_name': contact_name
+                }
+            else:
+                logger.error(f"Failed to sync contact to BigCapital: {result.get('error')}")
+                return {
+                    'success': False,
+                    'error': result.get('error', 'Failed to create contact'),
+                    'invoiceplane_id': contact_id,
+                    'contact_name': contact_name
+                }
+
+        except BigCapitalAPIError as e:
+            logger.error(f"BigCapital API error syncing contact: {e}")
+            self._sync_stats['errors'] += 1
+            return {
+                'success': False,
+                'error': f'BigCapital API error: {str(e)}',
+                'invoiceplane_id': contact_data.get('id'),
+                'contact_name': contact_data.get('name')
+            }
+        except Exception as e:
+            logger.error(f"Unexpected error syncing contact: {e}")
+            self._sync_stats['errors'] += 1
+            return {
+                'success': False,
+                'error': f'Unexpected error: {str(e)}',
+                'invoiceplane_id': contact_data.get('id'),
+                'contact_name': contact_data.get('name')
+            }
+
     def sync_recent_invoices_from_invoiceplane(self, days: int = 7) -> List[Dict[str, Any]]:
         """Sync recent invoices from InvoicePlane to BigCapital"""
         try:

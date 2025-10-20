@@ -208,6 +208,32 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             logger.error(f"Documents page error: {e}")
             return render_template('errors/500.html'), 500
     
+    @web.route('/contacts')
+    def contacts():
+        """Contacts management page"""
+        try:
+            # Get contacts from InvoicePlane plugin if available
+            contacts = []
+            invoiceplane_plugin = None
+            
+            if plugin_manager:
+                invoiceplane_plugin = plugin_manager.get_plugin('invoiceplanepy')
+                if invoiceplane_plugin and hasattr(invoiceplane_plugin, 'client') and invoiceplane_plugin.client:
+                    try:
+                        contacts = invoiceplane_plugin.client.get_clients(limit=100)
+                        logger.info(f"Retrieved {len(contacts) if contacts else 0} contacts from InvoicePlane")
+                    except Exception as e:
+                        logger.error(f"Failed to get contacts from InvoicePlane: {e}")
+                        contacts = []
+            
+            return render_template('contacts.html', 
+                                   contacts=contacts,
+                                   invoiceplane_available=invoiceplane_plugin is not None)
+            
+        except Exception as e:
+            logger.error(f"Contacts page error: {e}")
+            return render_template('errors/500.html'), 500
+    
     @web.route('/upload', methods=['GET', 'POST'])
     def upload_document():
         """Document upload page and handler"""
@@ -1440,6 +1466,59 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
 
         except Exception as e:
             logger.error(f"Failed to sync invoice {invoice_id} to BigCapital: {e}")
+            return jsonify({'error': str(e)}), 500
+
+    @api.route('/bigcapital/sync/contact/<int:contact_id>', methods=['POST'])
+    def sync_contact_to_bigcapital(contact_id):
+        """Sync an InvoicePlane contact to BigCapital"""
+        try:
+            logger.info(f"Syncing InvoicePlane contact {contact_id} to BigCapital")
+
+            if not plugin_manager:
+                logger.error("Plugin manager not available")
+                return jsonify({'error': 'Plugin manager not available'}), 500
+
+            # Get InvoicePlane plugin
+            invoiceplane_plugin = plugin_manager.get_plugin('invoiceplanepy')
+            if not invoiceplane_plugin:
+                logger.error("InvoicePlane plugin not found")
+                return jsonify({'error': 'InvoicePlane plugin not available'}), 404
+
+            if not hasattr(invoiceplane_plugin, 'client') or not invoiceplane_plugin.client:
+                logger.error("InvoicePlane plugin client not initialized")
+                return jsonify({'error': 'InvoicePlane plugin not properly configured'}), 500
+
+            # Get BigCapital plugin
+            bigcapital_plugin = plugin_manager.get_plugin('bigcapitalpy')
+            if not bigcapital_plugin:
+                logger.error("BigCapital plugin not found")
+                return jsonify({'error': 'BigCapital plugin not available'}), 404
+
+            # Get contact details from InvoicePlane
+            contact = invoiceplane_plugin.client.get_client(contact_id)
+            if not contact:
+                return jsonify({'error': f'Contact {contact_id} not found in InvoicePlane'}), 404
+
+            # Sync contact to BigCapital
+            sync_result = bigcapital_plugin.sync_contact_from_invoiceplane(contact)
+
+            if sync_result.get('success'):
+                logger.info(f"Successfully synced contact {contact_id} to BigCapital")
+                return jsonify({
+                    'success': True,
+                    'message': f'Contact {contact_id} synced successfully to BigCapital',
+                    'sync_result': sync_result
+                })
+            else:
+                logger.error(f"Failed to sync contact {contact_id} to BigCapital: {sync_result.get('error', 'Unknown error')}")
+                return jsonify({
+                    'success': False,
+                    'error': sync_result.get('error', 'Failed to sync contact'),
+                    'sync_result': sync_result
+                }), 400
+
+        except Exception as e:
+            logger.error(f"Failed to sync contact {contact_id} to BigCapital: {e}")
             return jsonify({'error': str(e)}), 500
 
     return api

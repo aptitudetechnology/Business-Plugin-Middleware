@@ -98,6 +98,52 @@
     </div>
 </div>
 
+<!-- Quick Actions -->
+<div class="row mt-4">
+    <div class="col-12">
+        <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
+    </div>
+    
+    <div class="col-md-4 mb-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-file-alt fa-3x text-primary mb-3"></i>
+                <h5 class="card-title">Documents</h5>
+                <p class="card-text">View and manage documents from connected services</p>
+                <a href="{{ url_for('web.documents') }}" class="btn btn-primary">
+                    <i class="fas fa-eye"></i> View Documents
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-users fa-3x text-success mb-3"></i>
+                <h5 class="card-title">Contacts</h5>
+                <p class="card-text">View and manage contacts from InvoicePlane</p>
+                <a href="{{ url_for('web.contacts') }}" class="btn btn-success">
+                    <i class="fas fa-eye"></i> View Contacts
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-upload fa-3x text-info mb-3"></i>
+                <h5 class="card-title">Upload</h5>
+                <p class="card-text">Upload new documents for processing</p>
+                <a href="{{ url_for('web.upload_document') }}" class="btn btn-info">
+                    <i class="fas fa-cloud-upload-alt"></i> Upload Document
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% if menu_items %}
 <div class="row mt-4">
     <div class="col-12">
