@@ -813,15 +813,16 @@ class BigCapitalPlugin(IntegrationPlugin):
             customer_id = client_result.get('contact_id') if client_result.get('success') else None
             
             # Transform line items
-            entries = []
+            line_items = []
             for item in invoice_data.get('items', []):
-                entry = {
+                item_data = {
                     'description': item.get('name', ''),
                     'quantity': item.get('quantity', 1),
-                    'rate': item.get('price', 0),
-                    'amount': item.get('total', 0)
+                    'unit_price': item.get('price', 0)
                 }
-                entries.append(entry)
+                # Calculate amount
+                item_data['amount'] = item_data['quantity'] * item_data['unit_price']
+                line_items.append(item_data)
             
             # Build BigCapital invoice using correct field names from API spec
             bigcapital_invoice = {
@@ -829,13 +830,7 @@ class BigCapitalPlugin(IntegrationPlugin):
                 'invoice_number': invoice_data.get('invoice_number'),
                 'invoice_date': invoice_data.get('issue_date'),
                 'due_date': invoice_data.get('due_date'),
-                'status': self._map_invoice_status(invoice_data.get('status')),
-                'currency_code': invoice_data.get('currency_code', 'USD'),
-                'exchange_rate': invoice_data.get('exchange_rate', 1.0),
-                'notes': invoice_data.get('notes', ''),
-                'terms': invoice_data.get('terms', ''),
-                'discount': invoice_data.get('discount_amount', 0),
-                'entries': entries
+                'line_items': line_items
             }
             
             return bigcapital_invoice
@@ -857,21 +852,16 @@ class BigCapitalPlugin(IntegrationPlugin):
                     'action': 'found'
                 }
             
-            # Create new contact
+            # Create new contact - use correct field names for BigCapital API
             contact_data = {
                 'display_name': client_data.get('name', ''),
-                'contact_type': 'customer',
-                'first_name': client_data.get('first_name', ''),
-                'last_name': client_data.get('last_name', ''),
-                'company_name': client_data.get('company', ''),
                 'email': client_data.get('email', ''),
                 'phone': client_data.get('phone', ''),
-                'billing_address_1': client_data.get('address_1', ''),
+                'billing_address': client_data.get('address_1', ''),
                 'billing_city': client_data.get('city', ''),
                 'billing_state': client_data.get('state', ''),
                 'billing_postal_code': client_data.get('zip_code', ''),
-                'billing_country': client_data.get('country', ''),
-                'currency_code': client_data.get('currency_code', 'USD')
+                'billing_country': client_data.get('country', '')
             }
             
             result = self.client.create_contact(contact_data)

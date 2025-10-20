@@ -1423,13 +1423,20 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             # Sync invoice to BigCapital
             sync_result = bigcapital_plugin.sync_invoice_from_invoiceplane(invoice)
 
-            logger.info(f"Successfully synced invoice {invoice_id} to BigCapital")
-
-            return jsonify({
-                'success': True,
-                'message': f'Invoice {invoice_id} synced successfully to BigCapital',
-                'sync_result': sync_result
-            })
+            if sync_result.get('success'):
+                logger.info(f"Successfully synced invoice {invoice_id} to BigCapital")
+                return jsonify({
+                    'success': True,
+                    'message': f'Invoice {invoice_id} synced successfully to BigCapital',
+                    'sync_result': sync_result
+                })
+            else:
+                logger.error(f"Failed to sync invoice {invoice_id} to BigCapital: {sync_result.get('error', 'Unknown error')}")
+                return jsonify({
+                    'success': False,
+                    'error': sync_result.get('error', 'Failed to sync invoice'),
+                    'sync_result': sync_result
+                }), 400
 
         except Exception as e:
             logger.error(f"Failed to sync invoice {invoice_id} to BigCapital: {e}")

@@ -196,8 +196,8 @@ class BigCapitalClient:
             if contact_type:
                 params['contact_type'] = contact_type
             
-            response = self._make_request('GET', 'contacts', params=params)
-            return response.get('data', []) if response else []
+            response = self._make_request('GET', 'customers', params=params)
+            return response.get('data', {}).get('customers', []) if response else []
         except BigCapitalAPIError as e:
             logger.error(f"Failed to get contacts: {e}")
             return []
@@ -213,7 +213,7 @@ class BigCapitalClient:
     def get_contact(self, contact_id: int) -> Optional[Dict[str, Any]]:
         """Get a specific contact"""
         try:
-            return self._make_request('GET', f'contacts/{contact_id}')
+            return self._make_request('GET', f'customers/{contact_id}')
         except BigCapitalAPIError as e:
             logger.error(f"Failed to get contact {contact_id}: {e}")
             return None
@@ -221,7 +221,7 @@ class BigCapitalClient:
     def create_contact(self, contact_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Create a new contact"""
         try:
-            return self._make_request('POST', 'contacts', json=contact_data)
+            return self._make_request('POST', 'customers', json=contact_data)
         except BigCapitalAPIError as e:
             logger.error(f"Failed to create contact: {e}")
             return None
@@ -229,7 +229,7 @@ class BigCapitalClient:
     def update_contact(self, contact_id: int, contact_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Update an existing contact"""
         try:
-            return self._make_request('PUT', f'contacts/{contact_id}', json=contact_data)
+            return self._make_request('PUT', f'customers/{contact_id}', json=contact_data)
         except BigCapitalAPIError as e:
             logger.error(f"Failed to update contact {contact_id}: {e}")
             return None
@@ -237,21 +237,30 @@ class BigCapitalClient:
     def delete_contact(self, contact_id: int) -> bool:
         """Delete a contact"""
         try:
-            self._make_request('DELETE', f'contacts/{contact_id}')
+            self._make_request('DELETE', f'customers/{contact_id}')
             return True
         except BigCapitalAPIError as e:
             logger.error(f"Failed to delete contact {contact_id}: {e}")
             return False
     
     def search_contacts(self, query: str, contact_type: str = None) -> Optional[List[Dict[str, Any]]]:
-        """Search contacts by name or email"""
+        """Search contacts by name or email - since BigCapital doesn't have a search endpoint, get all contacts and filter locally"""
         try:
-            params = {'search': query}
-            if contact_type:
-                params['type'] = contact_type
+            # Get all contacts since BigCapital doesn't have a search endpoint
+            all_contacts = self.get_contacts()
+            if not all_contacts:
+                return []
             
-            response = self._make_request('GET', 'contacts/search', params=params)
-            return response.get('data', []) if response else []
+            # Filter contacts locally
+            query_lower = query.lower()
+            filtered_contacts = []
+            for contact in all_contacts:
+                name = contact.get('name', '').lower()
+                email = contact.get('email', '').lower()
+                if query_lower in name or query_lower in email:
+                    filtered_contacts.append(contact)
+            
+            return filtered_contacts
         except BigCapitalAPIError as e:
             logger.error(f"Failed to search contacts: {e}")
             return []
