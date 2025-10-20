@@ -112,7 +112,32 @@ class InvoicePlaneClient:
     
     def get_invoice(self, invoice_id: str) -> Optional[Dict[str, Any]]:
         """Get invoice by ID with full details"""
-        return self._make_request('GET', f'invoices/{invoice_id}/api')
+        try:
+            # Use the new API endpoint from the specification
+            url = f"{self.base_url}/invoices/api"
+            params = {
+                'id': invoice_id,
+                'limit': 1,
+                'page': 1
+            }
+            
+            headers = {'Authorization': f'Bearer {self.api_key}'}
+            response = self.session.get(url, params=params, headers=headers)
+            response.raise_for_status()
+            
+            data = response.json()
+            if 'invoices' in data and len(data['invoices']) > 0:
+                return data['invoices'][0]
+            else:
+                logger.warning(f"No invoice found with ID: {invoice_id}")
+                return None
+                
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to fetch invoice {invoice_id}: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error fetching invoice {invoice_id}: {e}")
+            return None
     
     def get_recent_invoices(self, limit: int = 10) -> Optional[List[Dict[str, Any]]]:
         """Get recent invoices using the new API format"""
