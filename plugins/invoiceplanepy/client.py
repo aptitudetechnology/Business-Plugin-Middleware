@@ -244,16 +244,49 @@ class InvoicePlaneClient:
     
     def get_client(self, client_id: str) -> Optional[Dict[str, Any]]:
         """Get client by ID"""
-        return self._make_request('GET', f'clients/{client_id}')
+        try:
+            # Use the same pattern as invoices
+            url = f"{self.base_url}/clients/api"
+            params = {
+                'id': client_id
+            }
+            
+            headers = {'Authorization': f'Bearer {self.api_key}'}
+            response = self.session.get(url, params=params, headers=headers)
+            response.raise_for_status()
+            
+            result = response.json()
+            if isinstance(result, list) and result:
+                return result[0]
+            elif isinstance(result, dict):
+                return result
+            return None
+        except Exception as e:
+            logger.error(f"Failed to get client {client_id}: {e}")
+            return None
     
     def get_clients(self, limit: int = 100) -> Optional[List[Dict[str, Any]]]:
-        """Get all clients"""
-        result = self._make_request('GET', f'clients?limit={limit}')
-        if result and isinstance(result, list):
-            return result
-        elif result and 'clients' in result:
-            return result['clients']
-        return []
+        """Get all clients using the bulk API endpoint"""
+        try:
+            # Use the now-working bulk clients API endpoint
+            url = f"{self.base_url}/clients/api"
+            params = {
+                'limit': min(limit, 100)
+            }
+
+            headers = {'Authorization': f'Bearer {self.api_key}'}
+            response = self.session.get(url, params=params, headers=headers)
+            response.raise_for_status()
+
+            result = response.json()
+            if isinstance(result, list):
+                return result
+            elif isinstance(result, dict) and 'clients' in result:
+                return result['clients']
+            return []
+        except Exception as e:
+            logger.error(f"Failed to get clients: {e}")
+            return []
     
     def create_product(self, product_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Create a new product"""

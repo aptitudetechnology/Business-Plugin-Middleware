@@ -212,24 +212,26 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
     def contacts():
         """Contacts management page"""
         try:
-            # Get contacts from InvoicePlane plugin if available
+            # Get contacts from InvoicePlane API
             contacts = []
             invoiceplane_plugin = None
-            
+
             if plugin_manager:
                 invoiceplane_plugin = plugin_manager.get_plugin('invoiceplanepy')
                 if invoiceplane_plugin and hasattr(invoiceplane_plugin, 'client') and invoiceplane_plugin.client:
                     try:
-                        contacts = invoiceplane_plugin.client.get_clients(limit=100)
-                        logger.info(f"Retrieved {len(contacts) if contacts else 0} contacts from InvoicePlane")
+                        # Get contacts directly from the bulk API endpoint
+                        contacts = invoiceplane_plugin.client.get_clients(limit=50)
+
+                        logger.info(f"Retrieved {len(contacts)} contacts from InvoicePlane API")
                     except Exception as e:
-                        logger.error(f"Failed to get contacts from InvoicePlane: {e}")
+                        logger.error(f"Failed to get contacts from API: {e}")
                         contacts = []
-            
-            return render_template('contacts.html', 
+
+            return render_template('contacts.html',
                                    contacts=contacts,
                                    invoiceplane_available=invoiceplane_plugin is not None)
-            
+
         except Exception as e:
             logger.error(f"Contacts page error: {e}")
             return render_template('errors/500.html'), 500
@@ -1494,10 +1496,18 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
                 logger.error("BigCapital plugin not found")
                 return jsonify({'error': 'BigCapital plugin not available'}), 404
 
-            # Get contact details from InvoicePlane
-            contact = invoiceplane_plugin.client.get_client(contact_id)
+            # Get contact details by finding it in recent invoices
+            # Since InvoicePlane doesn't have a direct clients API, we extract from invoices
+            contact = None
+            recent_invoices = invoiceplane_plugin.client.get_recent_invoices(limit=200)  # Get more invoices to find the contact
+            
+            for invoice in recent_invoices:
+                if 'client' in invoice and invoice['client'] and str(invoice['client'].get('id')) == str(contact_id):
+                    contact = invoice['client']
+                    break
+            
             if not contact:
-                return jsonify({'error': f'Contact {contact_id} not found in InvoicePlane'}), 404
+                return jsonify({'error': f'Contact {contact_id} not found in recent invoices'}), 404
 
             # Sync contact to BigCapital
             sync_result = bigcapital_plugin.sync_contact_from_invoiceplane(contact)

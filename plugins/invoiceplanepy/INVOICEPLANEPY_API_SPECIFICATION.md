@@ -354,7 +354,100 @@ Retrieve a paginated list of payment records.
 
 ## 🏢 Clients API
 
-*Note: Currently only available through web interface. JSON API endpoint planned for future release.*
+### GET /clients/api
+
+Retrieve a paginated list of clients with full contact information including phone numbers, addresses, and company details.
+
+#### Query Parameters
+- `page` (integer, default: 1): Page number (1-based)
+- `limit` (integer, default: 100, max: 1000): Items per page
+- `search` (string, optional): Search in name, surname, email, company, phone, or mobile
+- `is_active` (boolean, default: true): Filter by active status
+- `sort_by` (string, default: "name"): Sort field (name, email, company, created_at)
+- `sort_order` (string, default: "asc"): Sort order (`asc` or `desc`)
+
+#### Response Format
+
+```json
+{
+  "clients": [
+    {
+      "id": 1,
+      "is_active": true,
+      "name": "John Doe",
+      "surname": "Smith",
+      "company": "Acme Corp",
+      "email": "john@acme.com",
+      "phone": "+1-555-0123",
+      "fax": "+1-555-0789",
+      "mobile": "+1-555-0456",
+      "website": "https://acme.com",
+      "address_1": "123 Main St",
+      "address_2": "Suite 100",
+      "city": "Anytown",
+      "state": "CA",
+      "zip_code": "12345",
+      "country": "USA",
+      "language": "en",
+      "gender": "male",
+      "birthdate": "1980-01-15",
+      "vat_id": "US123456789",
+      "tax_code": "TX123",
+      "abn": "12345678901",
+      "title": "CEO",
+      "notes": "Preferred customer",
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-20T14:15:00Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 100,
+    "total": 150,
+    "total_pages": 2
+  },
+  "filters": {
+    "search": null,
+    "is_active": true,
+    "sort_by": "name",
+    "sort_order": "asc"
+  }
+}
+```
+
+#### Example Request
+```bash
+curl -X GET "http://localhost:8000/clients/api?page=1&limit=50&search=john" \
+  -H "Authorization: Bearer sk_your_api_key"
+```
+
+#### Use Cases
+- Sync client data with external CRM systems
+- Generate client directories or contact lists
+- Search and filter clients programmatically
+- Integrate client information into other business applications
+
+### GET /clients/{client_id}/api
+
+Retrieve complete information for a specific client including all contact details and business information.
+
+#### Path Parameters
+- `client_id` (integer, required): The unique identifier of the client
+
+#### Response Format
+Returns a single client object with the same structure as shown in the list endpoint above.
+
+#### Example Request
+```bash
+curl -X GET "http://localhost:8000/clients/123/api" \
+  -H "Authorization: Bearer sk_your_api_key"
+```
+
+#### Use Cases
+- Retrieve detailed client information for forms or displays
+- Get client data for invoice generation
+- Access specific client contact information
+- Validate client existence in external systems
 
 ---
 
@@ -552,6 +645,39 @@ async function fetchInvoices(page = 1, limit = 100) {
   const data = await response.json();
   return data;
 }
+
+async function fetchClients(search = '', page = 1, limit = 100) {
+  const searchParam = search ? `&search=${encodeURIComponent(search)}` : '';
+  const response = await fetch(`${INVOICEPLANE_BASE_URL}/clients/api?page=${page}&limit=${limit}${searchParam}`, {
+    headers: {
+      'Authorization': `Bearer ${API_KEY}`,
+      'Content-Type': 'application/json'
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`API Error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data;
+}
+
+async function getClient(clientId) {
+  const response = await fetch(`${INVOICEPLANE_BASE_URL}/clients/${clientId}/api`, {
+    headers: {
+      'Authorization': `Bearer ${API_KEY}`,
+      'Content-Type': 'application/json'
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`API Error: ${response.status}`);
+  }
+
+  const client = await response.json();
+  return client;
+}
 ```
 
 ---
@@ -565,5 +691,5 @@ For API integration support:
 
 ---
 
-*Last Updated: October 2025*
+*Last Updated: 20 October 2025*
 *API Version: 1.0.0*
