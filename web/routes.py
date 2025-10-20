@@ -632,7 +632,7 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
                     invoices = result.get('data', [])
 
                     # Create pagination object
-                    from plugins.invoiceplane.client import InvoicePlanePagination
+                    from plugins.invoiceplanepy.client import InvoicePlanePagination
                     pagination = InvoicePlanePagination(result, page, page_size)
 
                     # Get plugin status

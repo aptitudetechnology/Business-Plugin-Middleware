@@ -6,6 +6,56 @@ from typing import Dict, Any, List, Optional
 from loguru import logger
 
 
+class InvoicePlanePagination:
+    """Simple pagination class for InvoicePlane results"""
+    
+    def __init__(self, data: Dict[str, Any], page: int, per_page: int):
+        self.data = data
+        self.page = page
+        self.per_page = per_page
+        self.total = data.get('total', 0)
+        self.results = data.get('data', [])
+        
+    @property
+    def pages(self):
+        """Total number of pages"""
+        if self.per_page == 0:
+            return 0
+        return (self.total + self.per_page - 1) // self.per_page
+    
+    @property
+    def has_prev(self):
+        """Check if there's a previous page"""
+        return self.page > 1
+    
+    @property
+    def has_next(self):
+        """Check if there's a next page"""
+        return self.page < self.pages
+    
+    @property
+    def prev_num(self):
+        """Previous page number"""
+        return self.page - 1 if self.has_prev else None
+    
+    @property
+    def next_num(self):
+        """Next page number"""
+        return self.page + 1 if self.has_next else None
+    
+    def iter_pages(self, left_edge=2, left_current=2, right_current=5, right_edge=2):
+        """Iterate over page numbers for pagination display"""
+        last = 0
+        for num in range(1, self.pages + 1):
+            if num <= left_edge or \
+               (num > self.page - left_current - 1 and num < self.page + right_current) or \
+               num > self.pages - right_edge:
+                if last + 1 != num:
+                    yield None  # Gap
+                yield num
+                last = num
+
+
 class InvoicePlaneClient:
     """Client for InvoicePlane API interactions"""
     
@@ -93,6 +143,58 @@ class InvoicePlaneClient:
         except Exception as e:
             logger.error(f"Unexpected error fetching recent invoices: {e}")
             return []
+    
+    def get_invoices(self, page: int = 1, per_page: int = 25, date_from: str = None, date_to: str = None, status: str = None) -> Optional[Dict[str, Any]]:
+        """Get invoices with pagination and filtering"""
+        try:
+            # Use the new API endpoint from the specification
+            url = f"{self.base_url}/invoices/api"
+            params = {
+                'limit': min(per_page, 100),  # API max is 100
+                'page': page,
+                'sort_by': 'created_at',
+                'sort_order': 'desc'
+            }
+            
+            # Add status filter if provided
+            if status:
+                params['status'] = status
+            
+            # Note: The API may not support date filtering directly
+            # If date filtering is needed, it would need to be implemented differently
+            
+            headers = {'Authorization': f'Bearer {self.api_key}'}
+            response = self.session.get(url, params=params, headers=headers)
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            # Transform the response to match the expected format
+            if 'invoices' in data:
+                pagination_info = data.get('pagination', {})
+                return {
+                    'data': data['invoices'],
+                    'page': pagination_info.get('page', page),
+                    'per_page': pagination_info.get('limit', per_page),
+                    'total': pagination_info.get('total', len(data['invoices'])),
+                    'has_more': pagination_info.get('page', page) < pagination_info.get('total_pages', 1)
+                }
+            else:
+                logger.warning("Unexpected response format from InvoicePlane API")
+                return {
+                    'data': [],
+                    'page': page,
+                    'per_page': per_page,
+                    'total': 0,
+                    'has_more': False
+                }
+                
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to fetch invoices: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error fetching invoices: {e}")
+            return None
     
     def create_quote(self, quote_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Create a new quote"""
