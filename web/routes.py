@@ -1366,7 +1366,7 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
                 return jsonify({'error': 'Plugin manager not available'}), 500
 
             # Get InvoicePlane plugin
-            invoiceplane_plugin = plugin_manager.get_plugin('invoiceplane')
+            invoiceplane_plugin = plugin_manager.get_plugin('invoiceplanepy')
             if not invoiceplane_plugin:
                 logger.error("InvoicePlane plugin not found")
                 return jsonify({'error': 'InvoicePlane plugin not available'}), 404

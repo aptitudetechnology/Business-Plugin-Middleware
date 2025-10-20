@@ -774,7 +774,8 @@ class BigCapitalPlugin(IntegrationPlugin):
             from plugins.invoiceplanepy.plugin import InvoicePlanePlugin
             
             # Get InvoicePlane plugin instance (this assumes it's configured)
-            invoiceplane_plugin = InvoicePlanePlugin("invoiceplane")
+            # Use the invoiceplanepy plugin name to match the restored plugin directory
+            invoiceplane_plugin = InvoicePlanePlugin("invoiceplanepy")
             # Note: In a real implementation, you'd get this from the plugin manager
             
             # For now, we'll use the InvoicePlane client directly
