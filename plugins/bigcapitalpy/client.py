@@ -86,6 +86,15 @@ class BigCapitalClient:
             if response.status_code == 429:
                 raise BigCapitalAPIError("Rate limit exceeded", response.status_code)
             
+            # Handle 400 Bad Request with detailed error info
+            if response.status_code == 400:
+                try:
+                    error_data = response.json()
+                    error_msg = error_data.get('error', 'Bad request')
+                    raise BigCapitalAPIError(f"Bad request: {error_msg}", response.status_code, error_data)
+                except ValueError:
+                    raise BigCapitalAPIError(f"Bad request: {response.text}", response.status_code)
+            
             # Raise for other HTTP errors
             response.raise_for_status()
             
@@ -294,9 +303,13 @@ class BigCapitalClient:
     def create_invoice(self, invoice_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Create a new invoice"""
         try:
+            logger.debug(f"Creating invoice with data: {invoice_data}")
             return self._make_request('POST', 'invoices', json=invoice_data)
         except BigCapitalAPIError as e:
             logger.error(f"Failed to create invoice: {e}")
+            # Log additional error details if available
+            if hasattr(e, 'response_data') and e.response_data:
+                logger.error(f"BigCapital error response: {e.response_data}")
             return None
     
     def update_invoice(self, invoice_id: int, invoice_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:

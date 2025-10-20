@@ -709,19 +709,34 @@ class BigCapitalPlugin(IntegrationPlugin):
             
             # Transform InvoicePlane invoice data to BigCapital format
             bigcapital_invoice = self._transform_invoiceplane_to_bigcapital(invoice_data)
-            
-            logger.debug(f"Transformed BigCapital invoice: {bigcapital_invoice}")
-            
-            # Check if we have a valid customer_id
-            if not bigcapital_invoice.get('customer_id'):
-                logger.error("Failed to find or create customer for invoice")
+
+            # Validate required fields before API call
+            required_fields = ['customer_id', 'invoice_date', 'due_date', 'line_items']
+            missing_fields = [field for field in required_fields if not bigcapital_invoice.get(field)]
+
+            if missing_fields:
+                error_msg = f"Missing required fields: {', '.join(missing_fields)}"
+                logger.error(f"{error_msg} for invoice {invoice_number}")
                 return {
                     'success': False,
-                    'error': 'Failed to find or create customer',
+                    'error': error_msg,
                     'invoiceplane_id': invoice_id,
                     'invoice_number': invoice_number
                 }
-            
+
+            # Validate line items
+            if not bigcapital_invoice['line_items']:
+                error_msg = "At least one line item is required"
+                logger.error(f"{error_msg} for invoice {invoice_number}")
+                return {
+                    'success': False,
+                    'error': error_msg,
+                    'invoiceplane_id': invoice_id,
+                    'invoice_number': invoice_number
+                }
+
+            logger.debug(f"Final BigCapital invoice data: {bigcapital_invoice}")
+
             # Create invoice in BigCapital
             result = self.client.create_invoice(bigcapital_invoice)
             
@@ -870,37 +885,92 @@ class BigCapitalPlugin(IntegrationPlugin):
         try:
             # Extract client information from the invoice
             client_data = invoice_data.get('client', {})
-            
+
             # Find or create client in BigCapital
             client_result = self._find_or_create_contact_from_invoiceplane(client_data)
             customer_id = client_result.get('contact_id') if client_result.get('success') else None
-            
+
+            if not customer_id:
+                raise ValueError("Failed to find or create customer for invoice")
+
             # Transform line items
             line_items = []
             for item in invoice_data.get('items', []):
+                item_name = item.get('name', '').strip()
+                if not item_name:
+                    raise ValueError("Line item description is required")
+
+                # BigCapital expects 'rate' field, not 'unit_price'
                 item_data = {
-                    'description': item.get('name', ''),
-                    'quantity': item.get('quantity', 1),
-                    'unit_price': item.get('price', 0)
+                    'description': item_name,
+                    'quantity': float(item.get('quantity', 1)),
+                    'rate': float(item.get('price', 0))
                 }
-                # Calculate amount
-                item_data['amount'] = item_data['quantity'] * item_data['unit_price']
                 line_items.append(item_data)
-            
+
+            if not line_items:
+                raise ValueError("At least one line item is required")
+
+            # Validate and format dates (BigCapital requires YYYY-MM-DD format)
+            invoice_date = self._format_date_for_bigcapital(invoice_data.get('issue_date'))
+            due_date = self._format_date_for_bigcapital(invoice_data.get('due_date'))
+
+            if not invoice_date or not due_date:
+                raise ValueError("Valid invoice_date and due_date are required")
+
             # Build BigCapital invoice using correct field names from API spec
             bigcapital_invoice = {
                 'customer_id': customer_id,
                 'invoice_number': invoice_data.get('invoice_number'),
-                'invoice_date': invoice_data.get('issue_date'),
-                'due_date': invoice_data.get('due_date'),
+                'invoice_date': invoice_date,
+                'due_date': due_date,
+                'currency': 'USD',  # Default currency
                 'line_items': line_items
             }
-            
+
             return bigcapital_invoice
-            
+
         except Exception as e:
             logger.error(f"Error transforming invoice data: {e}")
             raise
+
+    def _format_date_for_bigcapital(self, date_value: Any) -> Optional[str]:
+        """Format date for BigCapital API (YYYY-MM-DD format)"""
+        from datetime import datetime
+
+        if not date_value:
+            return None
+
+        try:
+            # If it's already a string in YYYY-MM-DD format, validate it
+            if isinstance(date_value, str):
+                # Try to parse various common formats
+                for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y/%m/%d', '%m-%d-%Y']:
+                    try:
+                        parsed = datetime.strptime(date_value, fmt)
+                        return parsed.strftime('%Y-%m-%d')
+                    except ValueError:
+                        continue
+
+                # If we can't parse it, try to interpret it as an ISO string
+                try:
+                    # Handle ISO format with timezone
+                    if 'T' in date_value:
+                        parsed = datetime.fromisoformat(date_value.replace('Z', '+00:00'))
+                        return parsed.strftime('%Y-%m-%d')
+                except:
+                    pass
+
+            # If it's a datetime object
+            elif isinstance(date_value, datetime):
+                return date_value.strftime('%Y-%m-%d')
+
+            logger.warning(f"Could not format date: {date_value}")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error formatting date {date_value}: {e}")
+            return None
 
     def _find_or_create_contact_from_invoiceplane(self, client_data: Dict[str, Any]) -> Dict[str, Any]:
         """Find existing contact or create new one from InvoicePlane client data"""
