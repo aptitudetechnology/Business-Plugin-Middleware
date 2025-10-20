@@ -698,8 +698,19 @@ class BigCapitalPlugin(IntegrationPlugin):
             invoice_number = invoice_data.get('invoice_number', 'unknown')
             logger.info(f"Syncing invoice from InvoicePlane: {invoice_number} (ID: {invoice_id})")
             
+            # Debug: Log the invoice data structure
+            logger.debug(f"InvoicePlane invoice data keys: {list(invoice_data.keys())}")
+            if 'client' in invoice_data:
+                logger.debug(f"Client data keys: {list(invoice_data['client'].keys())}")
+            if 'items' in invoice_data:
+                logger.debug(f"Items count: {len(invoice_data['items'])}")
+                if invoice_data['items']:
+                    logger.debug(f"First item keys: {list(invoice_data['items'][0].keys())}")
+            
             # Transform InvoicePlane invoice data to BigCapital format
             bigcapital_invoice = self._transform_invoiceplane_to_bigcapital(invoice_data)
+            
+            logger.debug(f"Transformed BigCapital invoice: {bigcapital_invoice}")
             
             # Check if we have a valid customer_id
             if not bigcapital_invoice.get('customer_id'):
@@ -801,16 +812,15 @@ class BigCapitalPlugin(IntegrationPlugin):
             customer_id = client_result.get('contact_id') if client_result.get('success') else None
             
             # Transform line items
-            line_items = []
+            entries = []
             for item in invoice_data.get('items', []):
-                line_item = {
-                    'item': item.get('name', ''),
-                    'description': item.get('description', ''),
+                entry = {
+                    'description': item.get('name', ''),
                     'quantity': item.get('quantity', 1),
                     'rate': item.get('price', 0),
                     'amount': item.get('total', 0)
                 }
-                line_items.append(line_item)
+                entries.append(entry)
             
             # Build BigCapital invoice using correct field names from API spec
             bigcapital_invoice = {
@@ -824,7 +834,7 @@ class BigCapitalPlugin(IntegrationPlugin):
                 'notes': invoice_data.get('notes', ''),
                 'terms': invoice_data.get('terms', ''),
                 'discount': invoice_data.get('discount_amount', 0),
-                'items': line_items
+                'entries': entries
             }
             
             return bigcapital_invoice

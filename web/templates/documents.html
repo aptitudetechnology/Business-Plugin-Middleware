@@ -235,8 +235,9 @@
                                                                 <i class="fas fa-share"></i>
                                                             </button>
                                                             <ul class="dropdown-menu">
-                                                                <li><a class="dropdown-item" href="#" onclick="sendToBigCapital('{{ invoice.id }}')">
+                                                                <li><a class="dropdown-item" href="#" onclick="sendToBigCapital('{{ invoice.id }}')" id="sync-btn-{{ invoice.id }}">
                                                                     <i class="fas fa-building"></i> Send to BigCapitalPy
+                                                                    <span class="sync-status" id="sync-status-{{ invoice.id }}" style="display: none;"></span>
                                                                 </a></li>
                                                                 <!-- Placeholder for future send-to options -->
                                                                 <li><hr class="dropdown-divider"></li>
@@ -801,10 +802,13 @@ function displayInvoiceDetails(invoiceData) {
 
 function sendToBigCapital(invoiceId) {
     // Show loading state
-    const button = event.target.closest('button');
+    const button = document.querySelector(`#sync-btn-${invoiceId}`);
+    const statusSpan = document.querySelector(`#sync-status-${invoiceId}`);
     const originalText = button.innerHTML;
+    
     button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
-    button.disabled = true;
+    button.style.pointerEvents = 'none';
+    statusSpan.style.display = 'none';
     
     // Call sync API
     fetch(`/api/bigcapital/sync/invoiceplane/${invoiceId}`, {
@@ -820,8 +824,10 @@ function sendToBigCapital(invoiceId) {
         if (data.success) {
             // Show success
             button.innerHTML = '<i class="fas fa-check"></i> Synced!';
-            button.classList.remove('btn-outline-success');
+            button.classList.remove('btn-outline-secondary');
             button.classList.add('btn-success');
+            statusSpan.innerHTML = '<i class="fas fa-check-circle text-success ms-2"></i>';
+            statusSpan.style.display = 'inline';
             
             // Show success message
             showToast('Invoice synced successfully to BigCapital!', 'success');
@@ -830,9 +836,10 @@ function sendToBigCapital(invoiceId) {
             setTimeout(() => {
                 button.innerHTML = originalText;
                 button.classList.remove('btn-success');
-                button.classList.add('btn-outline-success');
-                button.disabled = false;
-            }, 3000);
+                button.classList.add('btn-outline-secondary');
+                button.style.pointerEvents = 'auto';
+                statusSpan.style.display = 'none';
+            }, 5000);
         } else {
             throw new Error(data.error || 'Sync failed');
         }
@@ -842,8 +849,10 @@ function sendToBigCapital(invoiceId) {
         
         // Show error
         button.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Failed';
-        button.classList.remove('btn-outline-success');
+        button.classList.remove('btn-outline-secondary');
         button.classList.add('btn-danger');
+        statusSpan.innerHTML = '<i class="fas fa-times-circle text-danger ms-2"></i>';
+        statusSpan.style.display = 'inline';
         
         // Show error message
         showToast(`Failed to sync invoice: ${error.message}`, 'error');
@@ -852,9 +861,10 @@ function sendToBigCapital(invoiceId) {
         setTimeout(() => {
             button.innerHTML = originalText;
             button.classList.remove('btn-danger');
-            button.classList.add('btn-outline-success');
-            button.disabled = false;
-        }, 3000);
+            button.classList.add('btn-outline-secondary');
+            button.style.pointerEvents = 'auto';
+            statusSpan.style.display = 'none';
+        }, 5000);
     });
 }
 
