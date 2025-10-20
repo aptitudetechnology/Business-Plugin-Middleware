@@ -19,7 +19,7 @@
       "retry_attempts": 3,
       "sync_batch_size": 10
     },
-    "invoiceplanepy": {
+    "invoiceplane": {
       "enabled": true,
       "base_url": "http://invoiceplane:8000",
       "api_key": "your-invoiceplane-api-key-here",

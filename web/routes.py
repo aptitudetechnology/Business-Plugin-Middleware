@@ -164,7 +164,7 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             invoiceplane_plugin = None
             
             if plugin_manager:
-                invoiceplane_plugin = plugin_manager.get_plugin('invoiceplanepy')
+                invoiceplane_plugin = plugin_manager.get_plugin('invoiceplane')
                 if invoiceplane_plugin and hasattr(invoiceplane_plugin, 'client') and invoiceplane_plugin.client:
                     try:
                         recent_invoices = invoiceplane_plugin.client.get_recent_invoices(limit=20)
@@ -600,7 +600,7 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             # Get InvoicePlane plugin
             invoiceplane_plugin = None
             if plugin_manager:
-                invoiceplane_plugin = plugin_manager.get_plugin('invoiceplanepy')
+                invoiceplane_plugin = plugin_manager.get_plugin('invoiceplane')
 
             if not invoiceplane_plugin:
                 return render_template('invoiceplane_invoices.html',
@@ -1366,7 +1366,7 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
                 return jsonify({'error': 'Plugin manager not available'}), 500
 
             # Get InvoicePlane plugin
-            invoiceplane_plugin = plugin_manager.get_plugin('invoiceplanepy')
+            invoiceplane_plugin = plugin_manager.get_plugin('invoiceplane')
             if not invoiceplane_plugin:
                 logger.error("InvoicePlane plugin not found")
                 return jsonify({'error': 'InvoicePlane plugin not available'}), 404
@@ -1400,7 +1400,7 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
                 return jsonify({'error': 'Plugin manager not available'}), 500
 
             # Get InvoicePlane plugin
-            invoiceplane_plugin = plugin_manager.get_plugin('invoiceplanepy')
+            invoiceplane_plugin = plugin_manager.get_plugin('invoiceplane')
             if not invoiceplane_plugin:
                 logger.error("InvoicePlane plugin not found")
                 return jsonify({'error': 'InvoicePlane plugin not available'}), 404
