@@ -20,11 +20,11 @@
       "sync_batch_size": 10
     },
     "invoiceplane": {
-      "enabled": true,
-      "base_url": "http://invoiceplane:8000",
-      "api_key": "your-invoiceplane-api-key-here",
-      "timeout": 30
-    },
+    "enabled": true,
+    "base_url": "http://invoiceplane:8000",
+    "api_key": "your-invoiceplane-api-key-here",
+    "timeout": 30
+  },
     "ocr_processor": {
       "enabled": true,
       "tesseract_path": "/usr/bin/tesseract",
@@ -39,8 +39,9 @@
     },
     "paperless_ngx": {
       "enabled": true,
-      "api_key": "YOUR_REAL_API_TOKEN_HERE",
-      "base_url": "http://paperless-ngx:8000",            "hostname_url": "http://simple.local:8000",
+      "api_key": "YOUR_REAL_PAPERLESS_NGX_API_TOKEN_HERE",
+      "base_url": "http://paperless-ngx:8000",
+      "hostname_url": "http://simple.local:8000",
       "timeout": 30,
       "auto_refresh": true,
       "page_size": 25

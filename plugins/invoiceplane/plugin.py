@@ -23,13 +23,21 @@ class InvoicePlanePlugin(IntegrationPlugin):
         try:
             # Get plugin configuration
             config = app_context.get('config')
-            if not config:
-                logger.error("No configuration provided")
-                return False
+            if config:
+                # Try to get invoiceplane section first, then fallback to plugins config
+                invoiceplane_config = config.get_section('invoiceplane')
+                if invoiceplane_config:
+                    self.config = {
+                        'base_url': invoiceplane_config.get('base_url', '').rstrip('/'),
+                        'api_key': invoiceplane_config.get('api_key', ''),
+                        'timeout': invoiceplane_config.get('timeout', 30),
+                        'enabled': invoiceplane_config.get('enabled', True)
+                    }
             
-            # Initialize InvoicePlane client
-            api_key = self.config.get('api_key')
-            base_url = self.config.get('base_url', 'http://invoiceplane.local')
+            # Setup configuration from config property
+            config = self.config or {}
+            api_key = config.get('api_key')
+            base_url = config.get('base_url', 'http://invoiceplane.local')
             
             if not api_key:
                 logger.error("InvoicePlane API key not configured")
