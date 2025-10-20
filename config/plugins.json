@@ -19,7 +19,7 @@
       "retry_attempts": 3,
       "sync_batch_size": 10
     },
-    "invoiceplane": {
+    "invoiceplanepy": {
     "enabled": true,
     "base_url": "http://wavelet.local:8080",
     "api_key": "sk_P6j-BRax9sW0fxUroCyFuKpeSgW4-KegyJbcs5lx9DU",
