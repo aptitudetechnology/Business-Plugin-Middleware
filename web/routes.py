@@ -663,7 +663,7 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
                                        status_filter=status_filter)
 
         except Exception as e:
-            logger.error(f"InvoicePlane invoices route error: {e}")
+            logger.error(f"BigCapital invoices route error: {e}")
             return render_template('invoiceplane_invoices.html',
                                    invoices=[],
                                    invoiceplane_configured=False,
