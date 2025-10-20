@@ -6,6 +6,56 @@ from typing import Dict, Any, List, Optional
 from loguru import logger
 
 
+class InvoicePlanePagination:
+    """Simple pagination class for InvoicePlane results"""
+    
+    def __init__(self, data: Dict[str, Any], page: int, per_page: int):
+        self.data = data
+        self.page = page
+        self.per_page = per_page
+        self.total = data.get('total', 0)
+        self.results = data.get('data', [])
+        
+    @property
+    def pages(self):
+        """Total number of pages"""
+        if self.per_page == 0:
+            return 0
+        return (self.total + self.per_page - 1) // self.per_page
+    
+    @property
+    def has_prev(self):
+        """Check if there's a previous page"""
+        return self.page > 1
+    
+    @property
+    def has_next(self):
+        """Check if there's a next page"""
+        return self.page < self.pages
+    
+    @property
+    def prev_num(self):
+        """Previous page number"""
+        return self.page - 1 if self.has_prev else None
+    
+    @property
+    def next_num(self):
+        """Next page number"""
+        return self.page + 1 if self.has_next else None
+    
+    def iter_pages(self, left_edge=2, left_current=2, right_current=5, right_edge=2):
+        """Iterate over page numbers for pagination display"""
+        last = 0
+        for num in range(1, self.pages + 1):
+            if num <= left_edge or \
+               (num > self.page - left_current - 1 and num < self.page + right_current) or \
+               num > self.pages - right_edge:
+                if last + 1 != num:
+                    yield None  # Gap
+                yield num
+                last = num
+
+
 class InvoicePlaneClient:
     """Client for InvoicePlane API interactions"""
     
@@ -64,13 +114,64 @@ class InvoicePlaneClient:
         """Get invoice by ID"""
         return self._make_request('GET', f'invoices/{invoice_id}')
     
+    def get_invoices(self, page: int = 1, per_page: int = 25, date_from: str = None, date_to: str = None, status: str = None) -> Optional[Dict[str, Any]]:
+        """Get invoices with pagination and filtering"""
+        params = {
+            'page': page,
+            'per_page': per_page
+        }
+        
+        if date_from:
+            params['date_from'] = date_from
+        if date_to:
+            params['date_to'] = date_to
+        if status:
+            params['status'] = status
+            
+        # Build query string
+        query_parts = []
+        for key, value in params.items():
+            query_parts.append(f'{key}={value}')
+        query_string = '&'.join(query_parts)
+        
+        result = self._make_request('GET', f'invoices?{query_string}')
+        
+        # InvoicePlane API returns different formats, try to normalize
+        if result:
+            if isinstance(result, list):
+                # Return as paginated response
+                return {
+                    'data': result,
+                    'page': page,
+                    'per_page': per_page,
+                    'total': len(result),  # This is approximate since we don't have total count
+                    'has_more': len(result) == per_page
+                }
+            elif isinstance(result, dict) and 'invoices' in result:
+                return {
+                    'data': result['invoices'],
+                    'page': page,
+                    'per_page': per_page,
+                    'total': result.get('total', len(result['invoices'])),
+                    'has_more': len(result['invoices']) == per_page
+                }
+            else:
+                # Single invoice or unexpected format
+                return {
+                    'data': [result] if isinstance(result, dict) else [],
+                    'page': page,
+                    'per_page': per_page,
+                    'total': 1 if isinstance(result, dict) else 0,
+                    'has_more': False
+                }
+        
+        return None
+    
     def get_recent_invoices(self, limit: int = 10) -> Optional[List[Dict[str, Any]]]:
-        """Get recent invoices"""
-        result = self._make_request('GET', f'invoices?limit={limit}')
-        if result and isinstance(result, list):
-            return result
-        elif result and 'invoices' in result:
-            return result['invoices']
+        """Get recent invoices (legacy method for backward compatibility)"""
+        result = self.get_invoices(per_page=limit, page=1)
+        if result and 'data' in result:
+            return result['data']
         return []
     
     def create_quote(self, quote_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:

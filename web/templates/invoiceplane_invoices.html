@@ -1,0 +1,469 @@
+{% extends "base.html" %}
+
+{% block title %}InvoicePlane Invoices - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-file-invoice-dollar me-2"></i> InvoicePlane Invoices</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="refreshInvoices()">
+            <i class="fas fa-sync-alt me-1"></i> Refresh
+        </button>
+    </div>
+</div>
+
+<div class="main-content mb-4">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if error_message %}
+    <div class="alert alert-danger" role="alert">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        {{ error_message }}
+    </div>
+    {% endif %}
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h6 class="mb-0"><i class="fas fa-filter me-2"></i> Filters</h6>
+        </div>
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('web.invoiceplane_invoices') }}" id="filterForm">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label for="date_from" class="form-label">Date From</label>
+                        <input type="date" class="form-control" id="date_from" name="date_from" value="{{ date_from }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="date_to" class="form-label">Date To</label>
+                        <input type="date" class="form-control" id="date_to" name="date_to" value="{{ date_to }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="status" class="form-label">Status</label>
+                        <select class="form-select" id="status" name="status">
+                            <option value="">All Statuses</option>
+                            <option value="draft" {{ 'selected' if status_filter == 'draft' else '' }}>Draft</option>
+                            <option value="sent" {{ 'selected' if status_filter == 'sent' else '' }}>Sent</option>
+                            <option value="viewed" {{ 'selected' if status_filter == 'viewed' else '' }}>Viewed</option>
+                            <option value="paid" {{ 'selected' if status_filter == 'paid' else '' }}>Paid</option>
+                            <option value="overdue" {{ 'selected' if status_filter == 'overdue' else '' }}>Overdue</option>
+                            <option value="cancelled" {{ 'selected' if status_filter == 'cancelled' else '' }}>Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="page_size" class="form-label">Items per page</label>
+                        <select class="form-select" id="page_size" name="page_size">
+                            <option value="10" {{ 'selected' if request.args.get('page_size', '25') == '10' else '' }}>10</option>
+                            <option value="25" {{ 'selected' if request.args.get('page_size', '25') == '25' else '' }}>25</option>
+                            <option value="50" {{ 'selected' if request.args.get('page_size', '25') == '50' else '' }}>50</option>
+                            <option value="100" {{ 'selected' if request.args.get('page_size', '25') == '100' else '' }}>100</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary me-2">
+                            <i class="fas fa-search me-1"></i> Apply Filters
+                        </button>
+                        <a href="{{ url_for('web.invoiceplane_invoices') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-1"></i> Clear Filters
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row mb-3 align-items-center">
+        <div class="col-md-6">
+            <span class="text-muted">Total Invoices: <strong id="totalInvoices">{{ pagination.total if pagination else 'Loading...' }}</strong></span>
+        </div>
+        <div class="col-md-6 text-end">
+            <small class="text-muted">
+                Page {{ pagination.page if pagination else '?' }} of {{ pagination.pages if pagination else '?' }}
+            </small>
+        </div>
+    </div>
+
+    {% if invoices %}
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Invoice #</th>
+                    <th>Client</th>
+                    <th>Status</th>
+                    <th>Issue Date</th>
+                    <th>Due Date</th>
+                    <th>Total</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for invoice in invoices %}
+                <tr>
+                    <td>
+                        <a href="/plugins/invoiceplanepy/invoice/{{ invoice.id }}" target="_blank" class="text-decoration-none">
+                            <i class="fas fa-file-invoice-dollar me-1"></i>
+                            {{ invoice.invoice_number or invoice.number or 'N/A' }}
+                        </a>
+                    </td>
+                    <td>
+                        {% if invoice.client %}
+                            {{ invoice.client.name or 'Unknown' }}
+                        {% else %}
+                            {{ invoice.client_name or 'Unknown' }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% set status = invoice.status_name or invoice.status or 'unknown' %}
+                        {% if status == 'paid' %}
+                            <span class="badge bg-success">{{ status.title() }}</span>
+                        {% elif status == 'sent' %}
+                            <span class="badge bg-primary">{{ status.title() }}</span>
+                        {% elif status == 'overdue' %}
+                            <span class="badge bg-danger">{{ status.title() }}</span>
+                        {% elif status == 'draft' %}
+                            <span class="badge bg-secondary">{{ status.title() }}</span>
+                        {% else %}
+                            <span class="badge bg-warning">{{ status.title() }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ invoice.issue_date or invoice.date_created | datetime }}</td>
+                    <td>{{ invoice.due_date or invoice.date_due | datetime }}</td>
+                    <td>
+                        {% if invoice.total %}
+                            ${{ "%.2f"|format(invoice.total) }}
+                        {% elif invoice.invoice_total %}
+                            ${{ "%.2f"|format(invoice.invoice_total) }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-sm btn-outline-info" title="Details" onclick="showInvoiceDetails('{{ invoice.id }}')">
+                                <i class="fas fa-info-circle"></i>
+                            </button>
+
+                            <!-- Send To Dropdown -->
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Send To">
+                                    <i class="fas fa-share"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="#" onclick="sendToBigCapital('{{ invoice.id }}')" id="sync-btn-{{ invoice.id }}">
+                                        <i class="fas fa-building me-1"></i> Send to BigCapitalPy
+                                        <span class="sync-status" id="sync-status-{{ invoice.id }}" style="display: none;"></span>
+                                    </a></li>
+                                    <!-- Placeholder for future send-to options -->
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><span class="dropdown-item-text text-muted small">More options coming soon...</span></li>
+                                </ul>
+                            </div>
+
+                            {% if invoice.url_key %}
+                            <a href="/plugins/invoiceplanepy/invoice/{{ invoice.id }}" target="_blank" class="btn btn-sm btn-outline-primary" title="View in InvoicePlane">
+                                <i class="fas fa-external-link-alt"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if pagination %}
+    {# Pagination #}
+    <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center">
+            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('web.invoiceplane_invoices', page=pagination.prev_num, date_from=date_from, date_to=date_to, status=status_filter, page_size=request.args.get('page_size', 25)) }}" aria-label="Previous">
+                    <span aria-hidden="true">&laquo;</span>
+                </a>
+            </li>
+            {% for p in pagination.iter_pages() %}
+                {% if p %}
+                    <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                        <a class="page-link" href="{{ url_for('web.invoiceplane_invoices', page=p, date_from=date_from, date_to=date_to, status=status_filter, page_size=request.args.get('page_size', 25)) }}">{{ p }}</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                {% endif %}
+            {% endfor %}
+            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('web.invoiceplane_invoices', page=pagination.next_num, date_from=date_from, date_to=date_to, status=status_filter, page_size=request.args.get('page_size', 25)) }}" aria-label="Next">
+                    <span aria-hidden="true">&raquo;</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="text-center py-5">
+        <i class="fas fa-file-invoice-dollar fa-4x text-muted mb-3"></i>
+        <h5 class="text-muted">No invoices found</h5>
+        {% if invoiceplane_configured %}
+            <p class="text-muted">No invoices found matching your filters.</p>
+            <p class="text-muted small">Try adjusting your date range or status filters.</p>
+        {% else %}
+            <p class="text-muted">InvoicePlane plugin is not available or not configured.</p>
+            <p class="text-muted small">Configure the InvoicePlane plugin in the <a href="{{ url_for('web.plugins') }}">Plugins</a> section.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Invoice Details Modal -->
+<div class="modal fade" id="invoiceDetailsModal" tabindex="-1" aria-labelledby="invoiceDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="invoiceDetailsModalLabel">Invoice Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="invoiceDetailsLoadingSpinner" class="text-center py-3">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading invoice details...</p>
+                </div>
+                <div id="invoiceDetailsContent" style="display: none;">
+                    <!-- Invoice details will be populated here -->
+                </div>
+                <div id="invoiceDetailsError" style="display: none;" class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span id="invoiceDetailsErrorMessage">Failed to load invoice details.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function refreshInvoices() {
+    location.reload();
+}
+
+function showInvoiceDetails(invoiceId) {
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('invoiceDetailsModal'));
+    modal.show();
+
+    // Reset modal state
+    document.getElementById('invoiceDetailsLoadingSpinner').style.display = 'block';
+    document.getElementById('invoiceDetailsContent').style.display = 'none';
+    document.getElementById('invoiceDetailsError').style.display = 'none';
+
+    // Fetch invoice details
+    fetch(`/api/invoiceplane/invoices/${invoiceId}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            document.getElementById('invoiceDetailsLoadingSpinner').style.display = 'none';
+
+            if (data.success) {
+                displayInvoiceDetails(data.invoice);
+                document.getElementById('invoiceDetailsContent').style.display = 'block';
+            } else {
+                let errorMsg = data.error || 'Failed to load invoice details.';
+                document.getElementById('invoiceDetailsErrorMessage').textContent = errorMsg;
+                document.getElementById('invoiceDetailsError').style.display = 'block';
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching invoice details:', error);
+            document.getElementById('invoiceDetailsLoadingSpinner').style.display = 'none';
+
+            let errorMsg = 'Network error while fetching invoice details.';
+            if (error.message) {
+                errorMsg += ` (${error.message})`;
+            }
+
+            document.getElementById('invoiceDetailsErrorMessage').textContent = errorMsg;
+            document.getElementById('invoiceDetailsError').style.display = 'block';
+        });
+}
+
+function displayInvoiceDetails(invoiceData) {
+    const content = document.getElementById('invoiceDetailsContent');
+    content.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Invoice Information</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>Invoice Number:</strong></td><td>${invoiceData.invoice_number || invoiceData.number || 'N/A'}</td></tr>
+                    <tr><td><strong>Status:</strong></td><td>${invoiceData.status_name || invoiceData.status || 'Unknown'}</td></tr>
+                    <tr><td><strong>Issue Date:</strong></td><td>${invoiceData.issue_date || invoiceData.date_created || 'N/A'}</td></tr>
+                    <tr><td><strong>Due Date:</strong></td><td>${invoiceData.due_date || invoiceData.date_due || 'N/A'}</td></tr>
+                    <tr><td><strong>Total:</strong></td><td>$${invoiceData.total || invoiceData.invoice_total || 'N/A'}</td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6>Client Information</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>Name:</strong></td><td>${invoiceData.client ? invoiceData.client.name : (invoiceData.client_name || 'N/A')}</td></tr>
+                    <tr><td><strong>Email:</strong></td><td>${invoiceData.client ? invoiceData.client.email : 'N/A'}</td></tr>
+                    <tr><td><strong>Phone:</strong></td><td>${invoiceData.client ? invoiceData.client.phone : 'N/A'}</td></tr>
+                </table>
+            </div>
+        </div>
+        ${invoiceData.items ? `
+        <div class="row mt-3">
+            <div class="col-12">
+                <h6>Line Items</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Description</th>
+                                <th>Quantity</th>
+                                <th>Rate</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${invoiceData.items.map(item => `
+                                <tr>
+                                    <td>${item.name || item.description || ''}</td>
+                                    <td>${item.quantity || 1}</td>
+                                    <td>$${item.price || item.rate || 0}</td>
+                                    <td>$${item.total || 0}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        ` : ''}
+    `;
+}
+
+function sendToBigCapital(invoiceId) {
+    // Show loading state
+    const button = document.querySelector(`#sync-btn-${invoiceId}`);
+    const statusSpan = document.querySelector(`#sync-status-${invoiceId}`);
+    const originalText = button.innerHTML;
+
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+    button.style.pointerEvents = 'none';
+    statusSpan.style.display = 'none';
+
+    // Call sync API
+    fetch(`/api/bigcapital/sync/invoiceplane/${invoiceId}`, {
+        method: 'POST'
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Show success
+            button.innerHTML = '<i class="fas fa-check"></i> Synced!';
+            button.classList.remove('btn-outline-secondary');
+            button.classList.add('btn-success');
+            statusSpan.innerHTML = '<i class="fas fa-check-circle text-success ms-2"></i>';
+            statusSpan.style.display = 'inline';
+
+            // Show success message
+            showToast('Invoice synced successfully to BigCapital!', 'success');
+
+            // Reset button after delay
+            setTimeout(() => {
+                button.innerHTML = originalText;
+                button.classList.remove('btn-success');
+                button.classList.add('btn-outline-secondary');
+                button.style.pointerEvents = 'auto';
+                statusSpan.style.display = 'none';
+            }, 5000);
+        } else {
+            throw new Error(data.error || 'Sync failed');
+        }
+    })
+    .catch(error => {
+        console.error('Error syncing invoice:', error);
+
+        // Show error
+        button.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Failed';
+        button.classList.remove('btn-outline-secondary');
+        button.classList.add('btn-danger');
+        statusSpan.innerHTML = '<i class="fas fa-times-circle text-danger ms-2"></i>';
+        statusSpan.style.display = 'inline';
+
+        // Show error message
+        showToast(`Failed to sync invoice: ${error.message}`, 'error');
+
+        // Reset button after delay
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.classList.remove('btn-danger');
+            button.classList.add('btn-outline-secondary');
+            button.style.pointerEvents = 'auto';
+            statusSpan.style.display = 'none';
+        }, 5000);
+    });
+}
+
+function showToast(message, type = 'info') {
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-white bg-${type === 'error' ? 'danger' : type} border-0`;
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'assertive');
+    toast.setAttribute('aria-atomic', 'true');
+
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">${message}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+
+    // Add to toast container
+    const container = document.getElementById('toastContainer') || createToastContainer();
+    container.appendChild(toast);
+
+    // Show toast
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+
+    // Remove after hide
+    toast.addEventListener('hidden.bs.toast', () => {
+        toast.remove();
+    });
+}
+
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.className = 'toast-container position-fixed top-0 end-0 p-3';
+    container.style.zIndex = '9999';
+    document.body.appendChild(container);
+    return container;
+}
+</script>
+{% endblock %}</content>
+<parameter name="filePath">/home/chris/Business-Plugin-Middleware/web/templates/invoiceplane_invoices.html

@@ -341,9 +341,9 @@ class InvoicePlanePlugin(IntegrationPlugin):
         """Get menu items for the web interface"""
         return [
             {
-                'name': 'InvoicePlane',
-                'url': '/plugins/invoiceplane/',
-                'icon': 'fa-file-invoice'
+                'name': 'InvoicePlane Invoices',
+                'url': '/invoiceplane/invoices',
+                'icon': 'fa-file-invoice-dollar'
             }
         ]
     

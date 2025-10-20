@@ -592,6 +592,83 @@ def create_web_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             logger.error(f"Process document API error: {e}")
             return jsonify({'error': 'Internal server error'}), 500
 
+    # InvoicePlane Routes
+    @web.route('/invoiceplane/invoices')
+    def invoiceplane_invoices():
+        """Display InvoicePlane invoices with pagination and date filtering"""
+        try:
+            # Get InvoicePlane plugin
+            invoiceplane_plugin = None
+            if plugin_manager:
+                invoiceplane_plugin = plugin_manager.get_plugin('invoiceplanepy')
+
+            if not invoiceplane_plugin:
+                return render_template('invoiceplane_invoices.html',
+                                       invoices=[],
+                                       invoiceplane_configured=False,
+                                       error_message="InvoicePlane plugin not configured or unavailable")
+
+            # Get query parameters
+            page = request.args.get('page', 1, type=int)
+            page_size = request.args.get('page_size', 25, type=int)
+            date_from = request.args.get('date_from', '').strip()
+            date_to = request.args.get('date_to', '').strip()
+            status_filter = request.args.get('status', '').strip()
+
+            # Validate page size
+            page_size = min(max(page_size, 1), 100)  # Between 1 and 100
+
+            try:
+                # Get invoices from InvoicePlane
+                result = invoiceplane_plugin.client.get_invoices(
+                    page=page,
+                    per_page=page_size,
+                    date_from=date_from if date_from else None,
+                    date_to=date_to if date_to else None,
+                    status=status_filter if status_filter else None
+                )
+
+                if result:
+                    invoices = result.get('data', [])
+
+                    # Create pagination object
+                    from plugins.invoiceplanepy.client import InvoicePlanePagination
+                    pagination = InvoicePlanePagination(result, page, page_size)
+
+                    # Get plugin status
+                    plugin_status = invoiceplane_plugin.get_status() if hasattr(invoiceplane_plugin, 'get_status') else {}
+
+                    return render_template('invoiceplane_invoices.html',
+                                           invoices=invoices,
+                                           pagination=pagination,
+                                           date_from=date_from,
+                                           date_to=date_to,
+                                           status_filter=status_filter,
+                                           invoiceplane_configured=True,
+                                           plugin_status=plugin_status)
+                else:
+                    return render_template('invoiceplane_invoices.html',
+                                           invoices=[],
+                                           invoiceplane_configured=True,
+                                           error_message="Failed to fetch invoices from InvoicePlane")
+
+            except Exception as e:
+                logger.error(f"Failed to fetch InvoicePlane invoices: {e}")
+                return render_template('invoiceplane_invoices.html',
+                                       invoices=[],
+                                       invoiceplane_configured=True,
+                                       error_message=f"Failed to fetch invoices: {str(e)}",
+                                       date_from=date_from,
+                                       date_to=date_to,
+                                       status_filter=status_filter)
+
+        except Exception as e:
+            logger.error(f"InvoicePlane invoices route error: {e}")
+            return render_template('invoiceplane_invoices.html',
+                                   invoices=[],
+                                   invoiceplane_configured=False,
+                                   error_message="An error occurred while loading invoices")
+
     # NEW: API endpoint to get plugin configuration HTML
     @web.route('/api/plugins/<plugin_name>/config', methods=['GET'])
     def get_plugin_config(plugin_name):

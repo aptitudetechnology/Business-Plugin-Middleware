@@ -169,6 +169,11 @@
                         <!-- InvoicePlane Invoices Tab -->
                         <div class="tab-pane fade" id="invoiceplane-invoices" role="tabpanel" aria-labelledby="invoiceplane-tab">
                             {% if recent_invoices %}
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Showing {{ recent_invoices|length }} recent invoices from InvoicePlane.
+                                    <a href="{{ url_for('web.invoiceplane_invoices') }}" class="alert-link">View all invoices with pagination and filters</a>
+                                </div>
                                 <div class="table-responsive">
                                     <table class="table table-striped">
                                         <thead>
@@ -228,7 +233,7 @@
                                                         <button class="btn btn-outline-info" title="Details" onclick="showInvoiceDetails('{{ invoice.id }}')">
                                                             <i class="fas fa-info-circle"></i>
                                                         </button>
-                                                        
+
                                                         <!-- Send To Dropdown -->
                                                         <div class="btn-group btn-group-sm" role="group">
                                                             <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Send To">
@@ -244,7 +249,7 @@
                                                                 <li><span class="dropdown-item-text text-muted small">More options coming soon...</span></li>
                                                             </ul>
                                                         </div>
-                                                        
+
                                                         {% if invoice.url_key %}
                                                         <a href="/plugins/invoiceplanepy/invoice/{{ invoice.id }}" target="_blank" class="btn btn-outline-primary" title="View in InvoicePlane">
                                                             <i class="fas fa-external-link-alt"></i>
@@ -256,6 +261,11 @@
                                             {% endfor %}
                                         </tbody>
                                     </table>
+                                </div>
+                                <div class="text-center mt-3">
+                                    <a href="{{ url_for('web.invoiceplane_invoices') }}" class="btn btn-primary">
+                                        <i class="fas fa-list me-1"></i> View All Invoices
+                                    </a>
                                 </div>
                             {% else %}
                                 <div class="text-center py-5">
