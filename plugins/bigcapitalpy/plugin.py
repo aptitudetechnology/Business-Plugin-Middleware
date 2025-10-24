@@ -696,7 +696,20 @@ class BigCapitalPlugin(IntegrationPlugin):
             
             invoice_id = invoice_data.get('id', 'unknown')
             invoice_number = invoice_data.get('invoice_number', 'unknown')
-            logger.info(f"Syncing invoice from InvoicePlane: {invoice_number} (ID: {invoice_id})")
+            invoice_status = invoice_data.get('status_name', invoice_data.get('status', 'unknown'))
+            
+            logger.info(f"Syncing invoice from InvoicePlane: {invoice_number} (ID: {invoice_id}, Status: {invoice_status})")
+            
+            # Check invoice status - only allow syncing certain statuses
+            allowed_statuses = ['sent', 'viewed', 'open', 'overdue']  # Add more as needed
+            if isinstance(invoice_status, str) and invoice_status.lower() not in [s.lower() for s in allowed_statuses]:
+                logger.warning(f"Skipping invoice {invoice_number} with status '{invoice_status}'. Only {allowed_statuses} invoices can be synced.")
+                return {
+                    'success': False,
+                    'error': f'Invoice status "{invoice_status}" not allowed for syncing. Only {", ".join(allowed_statuses)} invoices can be synced.',
+                    'invoiceplane_id': invoice_id,
+                    'invoice_number': invoice_number
+                }
             
             # Debug: Log the invoice data structure
             logger.debug(f"InvoicePlane invoice data keys: {list(invoice_data.keys())}")

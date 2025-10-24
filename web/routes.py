@@ -1463,6 +1463,7 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
 
             # Debug: Log invoice details
             logger.info(f"Retrieved invoice from InvoicePlane: ID={invoice.get('id')}, Number={invoice.get('invoice_number')}")
+            logger.info(f"Invoice status: {invoice.get('status_name', invoice.get('status', 'unknown'))}")
             logger.info(f"Invoice data keys: {list(invoice.keys())}")
             logger.info(f"Invoice client: {invoice.get('client', {}).get('name', 'N/A') if invoice.get('client') else 'No client data'}")
             logger.info(f"Invoice total: {invoice.get('total', 'N/A')}")
