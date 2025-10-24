@@ -1446,7 +1446,35 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             # Get invoice details from InvoicePlane
             invoice = invoiceplane_plugin.client.get_invoice(invoice_id)
             if not invoice:
-                return jsonify({'error': f'Invoice {invoice_id} not found in InvoicePlane'}), 404
+                # Try to interpret invoice_id as invoice_number if direct lookup fails
+                logger.info(f"Direct invoice lookup failed for {invoice_id}, trying as invoice_number")
+                # Get all invoices and find by invoice_number
+                all_invoices = invoiceplane_plugin.client.get_invoices(limit=1000)  # Get more invoices to search
+                if all_invoices and 'invoices' in all_invoices:
+                    for inv in all_invoices['invoices']:
+                        if str(inv.get('invoice_number', '')) == str(invoice_id):
+                            logger.info(f"Found invoice by invoice_number {invoice_id}, using ID {inv['id']}")
+                            invoice = invoiceplane_plugin.client.get_invoice(str(inv['id']))
+                            break
+                
+                if not invoice:
+                    logger.error(f"Invoice {invoice_id} not found in InvoicePlane (tried both ID and invoice_number)")
+                    return jsonify({'error': f'Invoice {invoice_id} not found in InvoicePlane'}), 404
+
+            # Debug: Log invoice details
+            logger.info(f"Retrieved invoice from InvoicePlane: ID={invoice.get('id')}, Number={invoice.get('invoice_number')}")
+            logger.info(f"Invoice data keys: {list(invoice.keys())}")
+            logger.info(f"Invoice client: {invoice.get('client', {}).get('name', 'N/A') if invoice.get('client') else 'No client data'}")
+            logger.info(f"Invoice total: {invoice.get('total', 'N/A')}")
+            if 'items' in invoice:
+                logger.info(f"Invoice has {len(invoice['items'])} items")
+                if invoice['items']:
+                    logger.info(f"First item: {invoice['items'][0]}")
+                    logger.info(f"Item keys: {list(invoice['items'][0].keys())}")
+                else:
+                    logger.warning(f"❌ Invoice {invoice_id} has empty items array!")
+            else:
+                logger.warning(f"❌ Invoice {invoice_id} has no 'items' key! Available keys: {list(invoice.keys())}")
 
             # Sync invoice to BigCapital
             sync_result = bigcapital_plugin.sync_invoice_from_invoiceplane(invoice)

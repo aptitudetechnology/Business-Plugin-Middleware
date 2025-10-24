@@ -113,25 +113,87 @@ class InvoicePlaneClient:
     def get_invoice(self, invoice_id: str) -> Optional[Dict[str, Any]]:
         """Get invoice by ID with full details"""
         try:
-            # Use the new API endpoint from the specification
+            # Try direct endpoint first: /invoices/{id}/api
+            url = f"{self.base_url}/invoices/{invoice_id}/api"
+            headers = {'Authorization': f'Bearer {self.api_key}'}
+            response = self.session.get(url, headers=headers)
+
+            if response.status_code == 200:
+                data = response.json()
+                if isinstance(data, dict) and 'id' in data:
+                    logger.info(f"Found invoice {invoice_id} directly at /invoices/{invoice_id}/api")
+                    
+                    # Check if items are included, if not, fetch them separately
+                    if 'items' not in data or not data['items']:
+                        logger.info(f"Invoice {invoice_id} has no items in response, fetching separately")
+                        items = self.get_invoice_items(invoice_id)
+                        if items:
+                            data['items'] = items
+                            logger.info(f"Added {len(items)} items to invoice {invoice_id}")
+                        else:
+                            logger.warning(f"Could not fetch items for invoice {invoice_id}")
+                    
+                    return data
+
+            # Try with invoice_number if direct endpoint fails
+            logger.info(f"Direct endpoint failed for {invoice_id}, trying with invoice_number")
             url = f"{self.base_url}/invoices/api"
+            params = {
+                'invoice_number': invoice_id,
+                'limit': 1,
+                'page': 1
+            }
+
+            response = self.session.get(url, params=params, headers=headers)
+            if response.status_code == 200:
+                data = response.json()
+                if 'invoices' in data and len(data['invoices']) > 0:
+                    invoice = data['invoices'][0]
+                    logger.info(f"Found invoice by invoice_number {invoice_id}")
+                    
+                    # Check if items are included, if not, fetch them separately
+                    if 'items' not in invoice or not invoice['items']:
+                        logger.info(f"Invoice {invoice_id} has no items in response, fetching separately")
+                        items = self.get_invoice_items(invoice['id'])
+                        if items:
+                            invoice['items'] = items
+                            logger.info(f"Added {len(items)} items to invoice {invoice_id}")
+                        else:
+                            logger.warning(f"Could not fetch items for invoice {invoice_id}")
+                    
+                    return invoice
+
+            # Fallback to filtering by ID
+            logger.info(f"Invoice number search failed, trying ID filter for {invoice_id}")
             params = {
                 'id': invoice_id,
                 'limit': 1,
                 'page': 1
             }
-            
-            headers = {'Authorization': f'Bearer {self.api_key}'}
+
             response = self.session.get(url, params=params, headers=headers)
             response.raise_for_status()
-            
+
             data = response.json()
             if 'invoices' in data and len(data['invoices']) > 0:
-                return data['invoices'][0]
-            else:
-                logger.warning(f"No invoice found with ID: {invoice_id}")
-                return None
+                invoice = data['invoices'][0]
+                logger.info(f"Found invoice by ID filter {invoice_id}")
                 
+                # Check if items are included, if not, fetch them separately
+                if 'items' not in invoice or not invoice['items']:
+                    logger.info(f"Invoice {invoice_id} has no items in response, fetching separately")
+                    items = self.get_invoice_items(invoice['id'])
+                    if items:
+                        invoice['items'] = items
+                        logger.info(f"Added {len(items)} items to invoice {invoice_id}")
+                    else:
+                        logger.warning(f"Could not fetch items for invoice {invoice_id}")
+                
+                return invoice
+            else:
+                logger.warning(f"No invoice found with ID or invoice_number: {invoice_id}")
+                return None
+
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to fetch invoice {invoice_id}: {e}")
             return None
@@ -142,34 +204,44 @@ class InvoicePlaneClient:
     def get_invoice_items(self, invoice_id: str) -> Optional[List[Dict[str, Any]]]:
         """Get invoice items for a specific invoice"""
         try:
-            # Try different possible endpoints for invoice items
-            possible_endpoints = [
-                f"invoices/{invoice_id}/items",
-                f"invoice_items/{invoice_id}",
-                f"invoices/items/{invoice_id}"
-            ]
+            # Try the correct InvoicePlane API endpoint for invoice items
+            # Based on InvoicePlane API, items are typically at /invoice_items with invoice_id filter
+            url = f"{self.base_url}/invoice_items/api"
+            params = {
+                'invoice_id': invoice_id,
+                'limit': 100  # Get all items for this invoice
+            }
+            headers = {'Authorization': f'Bearer {self.api_key}'}
+            response = self.session.get(url, params=params, headers=headers)
             
-            for endpoint in possible_endpoints:
-                try:
-                    url = f"{self.base_url}/{endpoint}/api"
-                    headers = {'Authorization': f'Bearer {self.api_key}'}
-                    response = self.session.get(url, headers=headers)
-                    
-                    if response.status_code == 200:
-                        data = response.json()
-                        if isinstance(data, list):
-                            return data
-                        elif 'items' in data:
-                            return data['items']
-                        logger.info(f"Found invoice items at endpoint: {endpoint}")
-                        return []
-                        
-                except requests.exceptions.RequestException:
-                    continue  # Try next endpoint
-                    
-            logger.warning(f"No invoice items endpoint found for invoice {invoice_id}")
+            if response.status_code == 200:
+                data = response.json()
+                if 'invoice_items' in data and isinstance(data['invoice_items'], list):
+                    logger.info(f"Found {len(data['invoice_items'])} items for invoice {invoice_id}")
+                    return data['invoice_items']
+                elif isinstance(data, list):
+                    logger.info(f"Found {len(data)} items for invoice {invoice_id}")
+                    return data
+            
+            # Fallback: try direct invoice items endpoint
+            url = f"{self.base_url}/invoices/{invoice_id}/items/api"
+            response = self.session.get(url, headers=headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if isinstance(data, list):
+                    logger.info(f"Found {len(data)} items for invoice {invoice_id} via direct endpoint")
+                    return data
+                elif 'items' in data and isinstance(data['items'], list):
+                    logger.info(f"Found {len(data['items'])} items for invoice {invoice_id} via direct endpoint")
+                    return data['items']
+            
+            logger.warning(f"No invoice items found for invoice {invoice_id}")
             return []
             
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to fetch invoice items for {invoice_id}: {e}")
+            return []
         except Exception as e:
             logger.error(f"Unexpected error fetching invoice items for {invoice_id}: {e}")
             return []
