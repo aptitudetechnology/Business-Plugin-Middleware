@@ -727,6 +727,10 @@ class BigCapitalPlugin(IntegrationPlugin):
                 logger.warning(f"Invoice {invoice_number} (ID: {invoice_id}) has no 'items' key! Available keys: {list(invoice_data.keys())}")
             # Transform InvoicePlane invoice data to BigCapital format
             try:
+                logger.info(f"Starting transformation for InvoicePlane invoice {invoice_number} (ID: {invoice_id})")
+                logger.info(f"InvoicePlane client data: {invoice_data.get('client', {})}")
+                logger.info(f"InvoicePlane items count: {len(invoice_data.get('items', []))}")
+                
                 bigcapital_invoice = self._transform_invoiceplane_to_bigcapital(invoice_data, invoice_id, invoice_number)
             except Exception as e:
                 logger.error(f"Error during transformation: {e}")
@@ -778,6 +782,14 @@ class BigCapitalPlugin(IntegrationPlugin):
                 }
 
             logger.debug(f"Final BigCapital invoice data: {bigcapital_invoice}")
+            
+            # Log key fields for debugging
+            logger.info(f"BigCapital invoice details: customer_id={bigcapital_invoice.get('customer_id')}, invoice_number={bigcapital_invoice.get('invoice_number')}, line_items_count={len(bigcapital_invoice.get('line_items', []))}")
+            if bigcapital_invoice.get('line_items'):
+                logger.info(f"First line item: {bigcapital_invoice['line_items'][0]}")
+
+            # Log the complete data being sent to BigCapital API
+            logger.info(f"Sending invoice data to BigCapital API: {bigcapital_invoice}")
 
             # Create invoice in BigCapital
             result = self.client.create_invoice(bigcapital_invoice)
@@ -925,12 +937,16 @@ class BigCapitalPlugin(IntegrationPlugin):
     def _transform_invoiceplane_to_bigcapital(self, invoice_data: Dict[str, Any], invoice_id: str = None, invoice_number: str = None) -> Dict[str, Any]:
         """Transform InvoicePlane invoice data to BigCapital format"""
         try:
+            logger.info(f"Transforming invoice {invoice_number}: extracting client data")
             # Extract client information from the invoice
             client_data = invoice_data.get('client', {})
+            logger.info(f"Client data keys: {list(client_data.keys())}")
+            logger.info(f"Client name: {client_data.get('name')}, email: {client_data.get('email')}")
 
             # Find or create client in BigCapital
             client_result = self._find_or_create_contact_from_invoiceplane(client_data)
             customer_id = client_result.get('contact_id') if client_result.get('success') else None
+            logger.info(f"BigCapital customer_id: {customer_id}, action: {client_result.get('action')}")
 
             if not customer_id:
                 raise ValueError("Failed to find or create customer for invoice")
@@ -994,6 +1010,9 @@ class BigCapitalPlugin(IntegrationPlugin):
                 'currency': 'USD',  # Default currency
                 'line_items': line_items
             }
+
+            logger.info(f"Transformed invoice data: customer_id={customer_id}, invoice_number={bigcapital_invoice['invoice_number']}, line_items_count={len(line_items)}")
+            logger.info(f"First line item: {line_items[0] if line_items else 'No items'}")
 
             return bigcapital_invoice
 

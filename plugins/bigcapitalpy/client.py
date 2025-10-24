@@ -313,8 +313,15 @@ class BigCapitalClient:
             if not invoice_data.get('invoice_date'):
                 raise BigCapitalAPIError("Invoice must have an invoice_date", 400)
             
-            logger.debug(f"Creating invoice with data: {invoice_data}")
-            return self._make_request('POST', 'invoices', json=invoice_data)
+            logger.info(f"Creating BigCapital invoice: customer_id={invoice_data.get('customer_id')}, invoice_number={invoice_data.get('invoice_number')}")
+            logger.debug(f"Full invoice data being sent: {invoice_data}")
+            
+            result = self._make_request('POST', 'invoices', json=invoice_data)
+            
+            if result:
+                logger.info(f"BigCapital invoice created successfully: ID={result.get('id')}, number={result.get('invoice_number')}")
+            
+            return result
         except BigCapitalAPIError as e:
             logger.error(f"Failed to create invoice: {e}")
             # Log additional error details if available
