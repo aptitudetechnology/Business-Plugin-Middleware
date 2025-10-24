@@ -700,15 +700,24 @@ class BigCapitalPlugin(IntegrationPlugin):
             
             # Debug: Log the invoice data structure
             logger.debug(f"InvoicePlane invoice data keys: {list(invoice_data.keys())}")
+            logger.debug(f"Full invoice data: {invoice_data}")
             if 'client' in invoice_data:
                 logger.debug(f"Client data keys: {list(invoice_data['client'].keys())}")
             if 'items' in invoice_data:
                 logger.debug(f"Items count: {len(invoice_data['items'])}")
                 if invoice_data['items']:
                     logger.debug(f"First item keys: {list(invoice_data['items'][0].keys())}")
-            
+                    logger.debug(f"First item data: {invoice_data['items'][0]}")
+                else:
+                    logger.warning(f"Invoice {invoice_number} (ID: {invoice_id}) has empty items array!")
+            else:
+                logger.warning(f"Invoice {invoice_number} (ID: {invoice_id}) has no 'items' key! Available keys: {list(invoice_data.keys())}")
             # Transform InvoicePlane invoice data to BigCapital format
-            bigcapital_invoice = self._transform_invoiceplane_to_bigcapital(invoice_data)
+            bigcapital_invoice = self._transform_invoiceplane_to_bigcapital(invoice_data, invoice_id, invoice_number)
+            
+            # Check if transformation returned an error (no valid line items)
+            if isinstance(bigcapital_invoice, dict) and bigcapital_invoice.get('success') == False:
+                return bigcapital_invoice
 
             # Validate required fields before API call
             required_fields = ['customer_id', 'invoice_date', 'due_date', 'line_items']
@@ -880,7 +889,7 @@ class BigCapitalPlugin(IntegrationPlugin):
                 'error': f'Failed to sync recent invoices: {str(e)}'
             }]
 
-    def _transform_invoiceplane_to_bigcapital(self, invoice_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _transform_invoiceplane_to_bigcapital(self, invoice_data: Dict[str, Any], invoice_id: str = None, invoice_number: str = None) -> Dict[str, Any]:
         """Transform InvoicePlane invoice data to BigCapital format"""
         try:
             # Extract client information from the invoice
@@ -893,12 +902,21 @@ class BigCapitalPlugin(IntegrationPlugin):
             if not customer_id:
                 raise ValueError("Failed to find or create customer for invoice")
 
-            # Transform line items
+            # Transform line items - check multiple possible field names
+            items_data = invoice_data.get('items') or invoice_data.get('invoice_items') or invoice_data.get('line_items') or []
+            
+            # If no items found in invoice data, try to fetch them separately
+            if not items_data and hasattr(self, 'invoiceplane_client') and self.invoiceplane_client:
+                logger.info(f"Invoice {invoice_number} has no items, trying to fetch separately")
+                items_data = self.invoiceplane_client.get_invoice_items(invoice_id) or []
+            
             line_items = []
-            for item in invoice_data.get('items', []):
+            
+            for item in items_data:
                 item_name = item.get('name', '').strip()
                 if not item_name:
-                    raise ValueError("Line item description is required")
+                    logger.warning(f"Skipping item with empty name in invoice {invoice_number}")
+                    continue
 
                 # BigCapital expects 'rate' field, not 'unit_price'
                 item_data = {
@@ -909,7 +927,13 @@ class BigCapitalPlugin(IntegrationPlugin):
                 line_items.append(item_data)
 
             if not line_items:
-                raise ValueError("At least one line item is required")
+                logger.warning(f"Invoice {invoice_number} (ID: {invoice_id}) has no valid line items, skipping sync")
+                return {
+                    'success': False,
+                    'error': 'Invoice has no valid line items',
+                    'invoiceplane_id': invoice_id,
+                    'invoice_number': invoice_number
+                }
 
             # Validate and format dates (BigCapital requires YYYY-MM-DD format)
             invoice_date = self._format_date_for_bigcapital(invoice_data.get('issue_date'))

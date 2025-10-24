@@ -1531,4 +1531,73 @@ def create_api_blueprint(config: Any, db_manager: Any, doc_processor: Any, plugi
             logger.error(f"Failed to sync contact {contact_id} to BigCapital: {e}")
             return jsonify({'error': str(e)}), 500
 
+    @api.route('/invoiceplane/invoices/refresh', methods=['POST'])
+    def refresh_invoiceplane_invoices():
+        """Refresh invoice data from InvoicePlane API"""
+        try:
+            if not plugin_manager:
+                return jsonify({'error': 'Plugin manager not available'}), 500
+
+            invoiceplane_plugin = plugin_manager.get_plugin('invoiceplanepy')
+            if not invoiceplane_plugin:
+                return jsonify({'error': 'InvoicePlane plugin not available'}), 404
+
+            # Get refresh parameters from request
+            data = request.get_json() or {}
+            page = data.get('page', 1)
+            page_size = data.get('page_size', 25)
+            date_from = data.get('date_from')
+            date_to = data.get('date_to')
+            status = data.get('status')
+
+            # Fetch fresh data from InvoicePlane
+            result = invoiceplane_plugin.client.get_invoices(
+                page=page,
+                per_page=page_size,
+                date_from=date_from,
+                date_to=date_to,
+                status=status
+            )
+
+            if result:
+                invoices = result.get('data', [])
+                return jsonify({
+                    'success': True,
+                    'invoices': invoices,
+                    'pagination': result.get('pagination', {}),
+                    'refreshed_at': datetime.now().isoformat()
+                })
+            else:
+                return jsonify({'error': 'Failed to fetch invoices from InvoicePlane'}), 500
+
+        except Exception as e:
+            logger.error(f"Failed to refresh InvoicePlane invoices: {e}")
+            return jsonify({'error': str(e)}), 500
+
+    @api.route('/invoiceplane/invoices/<int:invoice_id>/refresh', methods=['POST'])
+    def refresh_single_invoice(invoice_id):
+        """Refresh a single invoice from InvoicePlane API"""
+        try:
+            if not plugin_manager:
+                return jsonify({'error': 'Plugin manager not available'}), 500
+
+            invoiceplane_plugin = plugin_manager.get_plugin('invoiceplanepy')
+            if not invoiceplane_plugin:
+                return jsonify({'error': 'InvoicePlane plugin not available'}), 404
+
+            # Fetch fresh invoice data
+            invoice = invoiceplane_plugin.client.get_invoice(invoice_id)
+            if invoice:
+                return jsonify({
+                    'success': True,
+                    'invoice': invoice,
+                    'refreshed_at': datetime.now().isoformat()
+                })
+            else:
+                return jsonify({'error': f'Invoice {invoice_id} not found'}), 404
+
+        except Exception as e:
+            logger.error(f"Failed to refresh invoice {invoice_id}: {e}")
+            return jsonify({'error': str(e)}), 500
+
     return api
