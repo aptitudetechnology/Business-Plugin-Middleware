@@ -15,14 +15,14 @@ if str(current_dir) not in sys.path:
 
 try:
     from plugins.invoiceplanepy.client import InvoicePlaneClient
-    from config.settings import load_config
+    from config.settings import Config
 
     def test_invoice_retrieval():
         """Test retrieving specific invoices"""
         print("Testing InvoicePlane invoice retrieval...")
 
         # Load config
-        config = load_config()
+        config = Config()
         if not config:
             print("Failed to load config")
             return
