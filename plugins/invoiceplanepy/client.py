@@ -243,11 +243,21 @@ class InvoicePlaneClient:
                 except requests.exceptions.RequestException:
                     continue  # Try next endpoint
             
-            # Last resort: Try to get invoice and extract items from it
-            logger.info(f"Trying to get invoice {invoice_id} and extract items")
-            invoice = self.get_invoices(limit=1000)  # Get all invoices
-            if invoice and 'invoices' in invoice:
-                for inv in invoice['invoices']:
+            # Last resort: Try to get invoices and extract items from the returned list
+            logger.info(f"Trying to get invoice {invoice_id} and extract items from bulk invoices")
+            invoice_list = self.get_invoices(page=1, per_page=1000)  # Request many invoices in one page
+            invoices = None
+            # Support different return formats from get_invoices/get_recent_invoices
+            if isinstance(invoice_list, dict):
+                if 'invoices' in invoice_list:
+                    invoices = invoice_list['invoices']
+                elif 'data' in invoice_list:
+                    invoices = invoice_list['data']
+            elif isinstance(invoice_list, list):
+                invoices = invoice_list
+
+            if invoices:
+                for inv in invoices:
                     if str(inv.get('id')) == str(invoice_id) and 'items' in inv:
                         logger.info(f"Found {len(inv['items'])} items in invoice data")
                         return inv['items']
