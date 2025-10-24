@@ -23,12 +23,12 @@ try:
 
         # Load config
         config = Config()
-        if not config:
+        if not config.config.sections():
             print("Failed to load config")
             return
 
         # Get InvoicePlane config
-        invoiceplane_config = config.get('plugins', {}).get('invoiceplanepy', {})
+        invoiceplane_config = config.get_plugin_config('invoiceplanepy')
         if not invoiceplane_config:
             print("InvoicePlane config not found")
             return
