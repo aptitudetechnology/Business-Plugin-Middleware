@@ -219,15 +219,26 @@ class InvoicePlaneClient:
                     url = f"{self.base_url}/{endpoint}/api"
                     headers = {'Authorization': f'Bearer {self.api_key}'}
                     
-                    # For the general invoice_items endpoint, add invoice_id filter
+            # For the general invoice_items endpoint, add invoice_id filter
                     if endpoint == "invoice_items":
                         params = {'invoice_id': invoice_id}
                         response = self.session.get(url, params=params, headers=headers)
+                        logger.debug(f"Trying {url} with params {params}")
                     else:
                         response = self.session.get(url, headers=headers)
+                        logger.debug(f"Trying {url}")
                     
+                    logger.debug(f"Response status: {response.status_code}")
                     if response.status_code == 200:
                         data = response.json()
+                        logger.debug(f"Response data type: {type(data)}")
+                        if isinstance(data, dict):
+                            logger.debug(f"Response keys: {list(data.keys())}")
+                        elif isinstance(data, list):
+                            logger.debug(f"Response is list with {len(data)} items")
+                            if data and isinstance(data[0], dict):
+                                logger.debug(f"First item keys: {list(data[0].keys())}")
+                        
                         if isinstance(data, list):
                             logger.info(f"Found {len(data)} invoice items at endpoint: {endpoint}")
                             return data
@@ -243,24 +254,35 @@ class InvoicePlaneClient:
                 except requests.exceptions.RequestException:
                     continue  # Try next endpoint
             
-            # Last resort: Try to get invoices and extract items from the returned list
-            logger.info(f"Trying to get invoice {invoice_id} and extract items from bulk invoices")
-            invoice_list = self.get_invoices(page=1, per_page=1000)  # Request many invoices in one page
-            invoices = None
-            # Support different return formats from get_invoices/get_recent_invoices
-            if isinstance(invoice_list, dict):
-                if 'invoices' in invoice_list:
-                    invoices = invoice_list['invoices']
-                elif 'data' in invoice_list:
-                    invoices = invoice_list['data']
-            elif isinstance(invoice_list, list):
-                invoices = invoice_list
-
-            if invoices:
-                for inv in invoices:
-                    if str(inv.get('id')) == str(invoice_id) and 'items' in inv:
-                        logger.info(f"Found {len(inv['items'])} items in invoice data")
-                        return inv['items']
+            # Try getting all invoice items and filtering by invoice_id
+            try:
+                url = f"{self.base_url}/invoice_items/api"
+                headers = {'Authorization': f'Bearer {self.api_key}'}
+                response = self.session.get(url, headers=headers)
+                logger.debug(f"Trying {url} to get all invoice items")
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    logger.debug(f"All invoice items response status: {response.status_code}")
+                    if isinstance(data, dict):
+                        logger.debug(f"All invoice items response keys: {list(data.keys())}")
+                    elif isinstance(data, list):
+                        logger.debug(f"All invoice items is list with {len(data)} items")
+                    
+                    if isinstance(data, list):
+                        # Filter by invoice_id
+                        filtered_items = [item for item in data if str(item.get('invoice_id', '')) == str(invoice_id)]
+                        if filtered_items:
+                            logger.info(f"Found {len(filtered_items)} invoice items by filtering all items")
+                            return filtered_items
+                    elif isinstance(data, dict) and 'invoice_items' in data:
+                        filtered_items = [item for item in data['invoice_items'] if str(item.get('invoice_id', '')) == str(invoice_id)]
+                        if filtered_items:
+                            logger.info(f"Found {len(filtered_items)} invoice items by filtering from 'invoice_items' key")
+                            return filtered_items
+            except requests.exceptions.RequestException as e:
+                logger.debug(f"Failed to get all invoice items: {e}")
+                pass
             
             logger.warning(f"No invoice items found for invoice {invoice_id}")
             return []

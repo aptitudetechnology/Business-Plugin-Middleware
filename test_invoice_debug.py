@@ -111,6 +111,36 @@ try:
             else:
                 print(f"Error: {response.text}")
                 
+            # Test getting all invoices to find ones with items
+            print("\nTesting /invoices/api (all invoices):")
+            params = {'limit': 50, 'page': 1}
+            response = requests.get(f"{client.base_url}/invoices/api", params=params, headers=headers)
+            print(f"Status: {response.status_code}")
+            if response.status_code == 200:
+                data = response.json()
+                if isinstance(data, dict) and 'invoices' in data:
+                    invoices = data['invoices']
+                    print(f"Found {len(invoices)} invoices")
+                    
+                    invoices_with_items = []
+                    for inv in invoices:
+                        item_count = len(inv.get('items', []))
+                        if item_count > 0:
+                            invoices_with_items.append((inv.get('invoice_number'), inv.get('id'), item_count))
+                    
+                    if invoices_with_items:
+                        print(f"Invoices with items: {invoices_with_items}")
+                    else:
+                        print("No invoices found with items!")
+                        
+                    # Show first few invoices
+                    for i, inv in enumerate(invoices[:3]):
+                        print(f"Invoice {i+1}: #{inv.get('invoice_number')} (ID: {inv.get('id')}) - {len(inv.get('items', []))} items")
+                else:
+                    print("Unexpected response format")
+            else:
+                print(f"Error: {response.text}")
+                
         except Exception as e:
             print(f"Error testing raw API: {e}")
 

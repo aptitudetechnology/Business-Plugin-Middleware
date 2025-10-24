@@ -303,6 +303,16 @@ class BigCapitalClient:
     def create_invoice(self, invoice_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Create a new invoice"""
         try:
+            # Validate required fields
+            if not invoice_data.get('line_items'):
+                raise BigCapitalAPIError("Invoice must have at least one line item", 400)
+            
+            if not invoice_data.get('customer_id'):
+                raise BigCapitalAPIError("Invoice must have a customer_id", 400)
+            
+            if not invoice_data.get('invoice_date'):
+                raise BigCapitalAPIError("Invoice must have an invoice_date", 400)
+            
             logger.debug(f"Creating invoice with data: {invoice_data}")
             return self._make_request('POST', 'invoices', json=invoice_data)
         except BigCapitalAPIError as e:

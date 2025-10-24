@@ -713,10 +713,29 @@ class BigCapitalPlugin(IntegrationPlugin):
             else:
                 logger.warning(f"Invoice {invoice_number} (ID: {invoice_id}) has no 'items' key! Available keys: {list(invoice_data.keys())}")
             # Transform InvoicePlane invoice data to BigCapital format
-            bigcapital_invoice = self._transform_invoiceplane_to_bigcapital(invoice_data, invoice_id, invoice_number)
+            try:
+                bigcapital_invoice = self._transform_invoiceplane_to_bigcapital(invoice_data, invoice_id, invoice_number)
+            except Exception as e:
+                logger.error(f"Error during transformation: {e}")
+                return {
+                    'success': False,
+                    'error': f'Transformation error: {str(e)}',
+                    'invoiceplane_id': invoice_id,
+                    'invoice_number': invoice_number
+                }
+            
+            # Debug: Log transformation result
+            logger.info(f"Transformation result type: {type(bigcapital_invoice)}")
+            if isinstance(bigcapital_invoice, dict):
+                logger.info(f"Transformation result keys: {list(bigcapital_invoice.keys())}")
+                if 'success' in bigcapital_invoice:
+                    logger.info(f"Transformation success: {bigcapital_invoice.get('success')}")
+                if 'line_items' in bigcapital_invoice:
+                    logger.info(f"Line items count: {len(bigcapital_invoice['line_items'])}")
             
             # Check if transformation returned an error (no valid line items)
             if isinstance(bigcapital_invoice, dict) and bigcapital_invoice.get('success') == False:
+                logger.info("Transformation returned error, returning it")
                 return bigcapital_invoice
 
             # Validate required fields before API call
@@ -737,6 +756,7 @@ class BigCapitalPlugin(IntegrationPlugin):
             if not bigcapital_invoice['line_items']:
                 error_msg = "At least one line item is required"
                 logger.error(f"{error_msg} for invoice {invoice_number}")
+                logger.error(f"Line items: {bigcapital_invoice['line_items']}")
                 return {
                     'success': False,
                     'error': error_msg,
@@ -904,11 +924,13 @@ class BigCapitalPlugin(IntegrationPlugin):
 
             # Transform line items - check multiple possible field names
             items_data = invoice_data.get('items') or invoice_data.get('invoice_items') or invoice_data.get('line_items') or []
+            logger.info(f"Items data from invoice: {items_data}")
             
             # If no items found in invoice data, try to fetch them separately
             if not items_data and hasattr(self, 'invoiceplane_client') and self.invoiceplane_client:
                 logger.info(f"Invoice {invoice_number} has no items, trying to fetch separately")
                 items_data = self.invoiceplane_client.get_invoice_items(invoice_id) or []
+                logger.info(f"Fetched items separately: {items_data}")
             
             line_items = []
             
@@ -918,14 +940,22 @@ class BigCapitalPlugin(IntegrationPlugin):
                     logger.warning(f"Skipping item with empty name in invoice {invoice_number}")
                     continue
 
+                quantity = float(item.get('quantity', 1))
+                price = float(item.get('price', 0))
+                
+                if quantity <= 0 or price <= 0:
+                    logger.warning(f"Skipping item with invalid quantity ({quantity}) or price ({price}) in invoice {invoice_number}")
+                    continue
+
                 # BigCapital expects 'rate' field, not 'unit_price'
                 item_data = {
                     'description': item_name,
-                    'quantity': float(item.get('quantity', 1)),
-                    'rate': float(item.get('price', 0))
+                    'quantity': quantity,
+                    'rate': price
                 }
                 line_items.append(item_data)
 
+            logger.info(f"Final line_items count: {len(line_items)}")
             if not line_items:
                 logger.warning(f"Invoice {invoice_number} (ID: {invoice_id}) has no valid line items, skipping sync")
                 return {
